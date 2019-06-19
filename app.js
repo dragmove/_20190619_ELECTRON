@@ -20,8 +20,9 @@ function createWindow() {
     },
   });
 
-  // win.loadURL(`file://${__dirname}/index.html`);
-  win.loadFile('index.html');
+  win.loadURL(`file://${__dirname}/index.html`);
+  // win.loadFile('./index.html'); // can install service worker in Real Electron App.
+  // win.loadURL('http://localhost:9001/index.html'); // can not install service worker in Real Electron App.
 
   win.webContents.openDevTools();
 
