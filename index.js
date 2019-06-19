@@ -3,6 +3,8 @@
 
   const isSupportServiceWorker = 'serviceWorker' in navigator,
     isSupportMessageChannel = 'MessageChannel' in window;
+  console.log('isSupportServiceWorker :', isSupportServiceWorker);
+  console.log('isSupportMessageChannel :', isSupportMessageChannel);
 
   // add service worker
   if (isSupportServiceWorker) {
@@ -63,7 +65,7 @@
       // send message with action, a port of message channel
       navigator.serviceWorker.controller.postMessage(
         {
-          action: 'getClientsNum'
+          action: 'getClientsNum',
         },
         [msgChannel.port2]
       );

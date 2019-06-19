@@ -1,4 +1,11 @@
+// https://www.electronforge.io/
 const { app, BrowserWindow } = require('electron');
+
+// Handle creating/removing shortcuts on Windows when installing/uninstalling.
+if (require('electron-squirrel-startup')) {
+  // eslint-disable-line global-require
+  app.quit();
+}
 
 process.env['ELECTRON_DISABLE_SECURITY_WARNINGS'] = true;
 
@@ -13,6 +20,7 @@ function createWindow() {
     },
   });
 
+  // win.loadURL(`file://${__dirname}/index.html`);
   win.loadFile('index.html');
 
   win.webContents.openDevTools();

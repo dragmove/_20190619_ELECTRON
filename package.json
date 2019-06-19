@@ -1,22 +1,59 @@
 {
-  "name": "study-electron",
+  "name": "my-app",
+  "productName": "my-app",
   "version": "0.0.1",
   "description": "test electron app",
   "main": "main.js",
   "scripts": {
-    "start": "electron ."
+    "start": "electron-forge start",
+    "package": "electron-forge package",
+    "make": "electron-forge make",
+    "publish": "electron-forge publish",
+    "lint": "echo \"No linting configured\""
   },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/dragmove/_20190619_ELECTRON.git"
   },
-  "author": "dragmove",
+  "keywords": [],
+  "author": "vuild",
   "license": "MIT",
-  "bugs": {
-    "url": "https://github.com/dragmove/_20190619_ELECTRON/issues"
+  "config": {
+    "forge": {
+      "packagerConfig": {},
+      "makers": [
+        {
+          "name": "@electron-forge/maker-squirrel",
+          "config": {
+            "name": "my_app"
+          }
+        },
+        {
+          "name": "@electron-forge/maker-zip",
+          "platforms": [
+            "darwin"
+          ]
+        },
+        {
+          "name": "@electron-forge/maker-deb",
+          "config": {}
+        },
+        {
+          "name": "@electron-forge/maker-rpm",
+          "config": {}
+        }
+      ]
+    }
   },
-  "homepage": "https://github.com/dragmove/_20190619_ELECTRON#readme",
+  "dependencies": {
+    "electron-squirrel-startup": "^1.0.0"
+  },
   "devDependencies": {
-    "electron": "^5.0.4"
+    "@electron-forge/cli": "^6.0.0-beta.39",
+    "@electron-forge/maker-deb": "^6.0.0-beta.39",
+    "@electron-forge/maker-rpm": "^6.0.0-beta.39",
+    "@electron-forge/maker-squirrel": "^6.0.0-beta.39",
+    "@electron-forge/maker-zip": "^6.0.0-beta.39",
+    "electron": "5.0.4"
   }
 }
