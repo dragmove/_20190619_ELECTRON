@@ -1,0 +1,22 @@
+{
+  "name": "study-electron",
+  "version": "0.0.1",
+  "description": "test electron app",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron ."
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/dragmove/_20190619_ELECTRON.git"
+  },
+  "author": "dragmove",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/dragmove/_20190619_ELECTRON/issues"
+  },
+  "homepage": "https://github.com/dragmove/_20190619_ELECTRON#readme",
+  "devDependencies": {
+    "electron": "^5.0.4"
+  }
+}
