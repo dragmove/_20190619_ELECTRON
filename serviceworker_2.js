@@ -1,11 +1,11 @@
 self.addEventListener('install', function(event) {
-  console.log('[sw] service worker installed.');
+  console.log('[sw] service worker 2 installed.');
 
-  // postpone trigger 'install' event until resolve promise.
+  // postpone 'install' event after resolve promise
   // event.waitUntil( promise );
 
   /*
-  // postpone 'install' event until finishing some files caching.
+  // postpone 'install' event after finishing some files caching
   event.waitUntil(
     caches.open('gih-cache').then(function(cache) {
       return cache.add('/index-offline.html')
@@ -15,7 +15,7 @@ self.addEventListener('install', function(event) {
 });
 
 self.addEventListener('activate', function() {
-  console.log('[sw] service worker activated.');
+  console.log('[sw] service worker 2 activated.');
 });
 
 self.addEventListener('fetch', function(event) {

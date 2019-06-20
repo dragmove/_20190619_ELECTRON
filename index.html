@@ -3,11 +3,21 @@
   <head>
     <meta charset="UTF-8" />
     <title>Hello Electron</title>
+
+    <style>
+      .btn {
+        display: block;
+      }
+    </style>
   </head>
 
   <body>
-    <a id="btn-send" href="#">send message to service worker</a>
-    <a id="btn-open" href="#">open new window</a>
+    <a id="btn-send" class="btn" href="#">send message to service worker</a>
+    <a id="btn-open" class="btn" href="#">open new window</a>
+
+    <a id="btn-skip-waiting" class="btn" href="#"
+      >skip waiting service worker. This site has updated. Please click here to see changes.</a
+    >
 
     <script src="./src/index.js"></script>
   </body>

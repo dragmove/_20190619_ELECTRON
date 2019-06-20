@@ -31,13 +31,7 @@
         "args": "none"
       }
     ],
-    "quotes": [
-      "error",
-      "single",
-      {
-        "avoidEscape": true
-      }
-    ],
+    "quotes": "off",
     "semi": ["error", "always"]
   }
 }
