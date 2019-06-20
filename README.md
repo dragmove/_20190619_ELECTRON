@@ -8,6 +8,7 @@
 ## Run
 
 ```sh
+npm i -g @electron-forge/cli // https://www.electronforge.io/cli
 npm install
 
 // Web App
