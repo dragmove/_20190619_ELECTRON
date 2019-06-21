@@ -6,9 +6,13 @@ let postMessageBtn, openWindowBtn, skipWaitingBtn, refreshBtn;
 // install service worker
 if (isSupportServiceWorker) {
   navigator.serviceWorker
+    // don't change serviceworker.js url when you build new service worker
     .register('serviceworker.js')
     .then(registration => {
       console.log('[app] service worker registered. registration :', registration);
+
+      // TODO: confirm registration.update();
+      // https://developers.google.com/web/fundamentals/primers/service-workers/lifecycle#%EC%88%98%EB%8F%99_%EC%97%85%EB%8D%B0%EC%9D%B4%ED%8A%B8
 
       const { active, installing, waiting } = registration;
       console.log('[app] register.then. active service worker :', active);
@@ -37,6 +41,8 @@ if (isSupportServiceWorker) {
           `[app] The window client isn't currently controlled by serview worker. so, it's a new service worker that will activate immediately`
         );
 
+        // TODO: ISSUE: updatefound event cannot reliable.
+        // https://developer.mozilla.org/ko/docs/Web/API/ServiceWorkerRegistration#Examples
         registration.addEventListener('updatefound', () => {
           console.log('[app] registration.onupdatefound event. 1st service worker is updating.');
 
@@ -90,6 +96,8 @@ if (isSupportServiceWorker) {
         break;
     }
   });
+} else {
+  console.log('[app] service worker is not supported.');
 }
 
 document.addEventListener('DOMContentLoaded', init);
@@ -186,6 +194,12 @@ function onNewServiceWorker(registration, callback) {
       if (evt.target.state === 'installed') {
         console.log('[app] new service worker is installed and available but its state is waiting. inform the user');
         callback.call(null);
+      }
+
+      if (evt.target.state === 'activated') {
+        // TODO: 서비스 워커의 install 이벤트 발생시, self.skipwaiting 으로 인해 새로고침 없이도 자동 업데이트가 가능한 것으로 추측된다.
+        // 해당 이벤트 정상 발생시, update new service worker 시 유저에게 새로고침을 강요하는 상황을 없앨 수 있을 것으로 생각된다.
+        console.log('[app] new service worker is activated. serviceworker.controller is changed.');
       }
     };
   }

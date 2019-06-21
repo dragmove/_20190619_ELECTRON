@@ -1,5 +1,27 @@
+// https://developer.mozilla.org/en-US/docs/Web/API/ServiceWorkerGlobalScope/oninstall
 self.addEventListener('install', evt => {
-  console.log('[sw] install event. service worker installed');
+  console.log('[sw] install event. service worker installed. evt :', evt);
+
+  // TODO: is this method rescue the situation that user have to do refresh ?
+  // https://bitsofco.de/what-self-skipwaiting-does-to-the-service-worker-lifecycle/
+  // https://developers.google.com/web/fundamentals/primers/service-workers/lifecycle#skip_the_waiting_phase
+  console.log('clients :', self.clients);
+
+  // TODO: confirm this solution
+  // https://developers.google.com/web/fundamentals/primers/service-workers/lifecycle#%EB%8C%80%EA%B8%B0_%EB%8B%A8%EA%B3%84_%EA%B1%B4%EB%84%88%EB%9B%B0%EA%B8%B0
+  self.skipWaiting().then(() => {
+    console.log('[sw] complete skipWaiting()');
+
+    /*
+    postAllClients(clients => {
+      console.log(`[sw] post 'skipWaitingComplete' message to all clients. clients :`, clients);
+
+      clients.forEach(client => {
+        client.postMessage({ action: 'skipWaitingComplete' });
+      });
+    });
+    */
+  });
 
   // postpone trigger 'install' evt until resolve promise.
   // evt.waitUntil( promise );
@@ -14,10 +36,12 @@ self.addEventListener('install', evt => {
   */
 });
 
-self.addEventListener('activate', () => {
-  console.log('[sw] activate event. service worker activated');
+// https://developer.mozilla.org/en-US/docs/Web/API/ServiceWorkerGlobalScope/onactivate
+self.addEventListener('activate', evt => {
+  console.log('[sw] activate event. service worker activated. evt :', evt);
 });
 
+// https://developer.mozilla.org/en-US/docs/Web/API/ServiceWorkerGlobalScope/onfetch
 self.addEventListener('fetch', function(evt) {
   // console.log('Fetch request for :', evt.request.url);
   /*
@@ -53,6 +77,7 @@ self.addEventListener('fetch', function(evt) {
 /*
  * message process
  */
+// https://developer.mozilla.org/en-US/docs/Web/API/ServiceWorkerGlobalScope/onmessage
 self.addEventListener('message', evt => {
   console.log('[sw] message event :', evt);
 
