@@ -3,21 +3,69 @@
   <head>
     <meta charset="UTF-8" />
     <title>Hello Electron</title>
+    <link rel="stylesheet" type="text/css" href="https://fonts.googleapis.com/css?family=Carme" />
 
     <style>
+      body {
+        font-family: 'Carme', Roboto, Ubuntu, san-serif;
+        font-size: 14px;
+        line-height: 1.5;
+        color: #fff;
+        background-color: #1c1c1c;
+      }
+
+      a {
+        margin-top: 10px;
+        color: #c23420;
+        font-weight: 600;
+        text-decoration: none;
+      }
+      a:hover {
+        text-decoration: underline;
+      }
+
       .btn {
+        display: block;
+      }
+
+      #guide-refresh {
+        margin-top: 20px;
+      }
+
+      #guide-refresh strong {
+        font-size: 22px;
+      }
+
+      #btn-open,
+      #btn-skip-waiting,
+      #guide-refresh {
+        display: none;
+      }
+
+      #btn-open.visible,
+      #btn-skip-waiting.visible,
+      #guide-refresh.visible {
         display: block;
       }
     </style>
   </head>
 
   <body>
-    <a id="btn-send" class="btn" href="#">send message to service worker</a>
+    <a id="btn-send" class="btn" href="#">send some message to service worker</a>
+
     <a id="btn-open" class="btn" href="#">open new window</a>
 
     <a id="btn-skip-waiting" class="btn" href="#"
-      >skip waiting service worker. This site has updated. Please click here to see changes.</a
+      >service worker in on 'skip waiting' state. This site has new service worker to update. Please click here to see
+      changes.</a
     >
+
+    <div id="guide-refresh">
+      <strong
+        >1st service worker is installed and activated, but you should refresh page to use new service worker.</strong
+      >
+      <a id="btn-refresh" class="btn" href="#">click to refresh</a>
+    </div>
 
     <script src="./src/index.js"></script>
   </body>

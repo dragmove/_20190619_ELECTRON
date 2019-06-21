@@ -1,12 +1,12 @@
-self.addEventListener('install', function(event) {
-  console.log('[sw] service worker installed.');
+self.addEventListener('install', evt => {
+  console.log('[sw] install event. service worker installed');
 
-  // postpone trigger 'install' event until resolve promise.
-  // event.waitUntil( promise );
+  // postpone trigger 'install' evt until resolve promise.
+  // evt.waitUntil( promise );
 
   /*
-  // postpone 'install' event until finishing some files caching.
-  event.waitUntil(
+  // postpone 'install' evt until finishing some files caching.
+  evt.waitUntil(
     caches.open('gih-cache').then(function(cache) {
       return cache.add('/index-offline.html')
     })
@@ -14,32 +14,32 @@ self.addEventListener('install', function(event) {
   */
 });
 
-self.addEventListener('activate', function() {
-  console.log('[sw] service worker activated.');
+self.addEventListener('activate', () => {
+  console.log('[sw] activate event. service worker activated');
 });
 
-self.addEventListener('fetch', function(event) {
-  // console.log('Fetch request for :', event.request.url);
+self.addEventListener('fetch', function(evt) {
+  // console.log('Fetch request for :', evt.request.url);
   /*
-  event.respondWith(
-    fetch(event.request).catch(function() {
+  evt.respondWith(
+    fetch(evt.request).catch(function() {
       return new Response('[sw] Welcome to the offline mode');
       // return new Response('some html', { headers: { 'Content-Type': 'text/html' } })
     })
   );
   */
   // payload response
-  // event.respondWith(fetch(event.request));
+  // evt.respondWith(fetch(evt.request));
   /*
   // replace response with new fetch
-  if (event.request.url.includes('/img/logo.png')) {
-    event.respondWith(fetch('/img/logo-flipped.png'));
+  if (evt.request.url.includes('/img/logo.png')) {
+    evt.respondWith(fetch('/img/logo-flipped.png'));
   }
   */
   /*
   // replace response
-  if (event.request.url.includes('bootstrap.min.css')) {
-    event.respondWith(
+  if (evt.request.url.includes('bootstrap.min.css')) {
+    evt.respondWith(
       new Response('background-color: #ff0;', {
         headers: {
           'Content-Type': 'text/css'
@@ -53,7 +53,9 @@ self.addEventListener('fetch', function(event) {
 /*
  * message process
  */
-self.addEventListener('message', function(evt) {
+self.addEventListener('message', evt => {
+  console.log('[sw] message event :', evt);
+
   const data = evt.data,
     port = evt.ports[0]; // receive port2 of message channel from client page
 
@@ -72,6 +74,20 @@ self.addEventListener('message', function(evt) {
       });
 
       break;
+
+    case 'skipWaiting':
+      self.skipWaiting().then(() => {
+        console.log('[sw] complete skipWaiting()');
+
+        postAllClients(clients => {
+          console.log(`[sw] post 'skipWaitingComplete' message to all clients. clients :`, clients);
+
+          clients.forEach(client => {
+            client.postMessage({ action: 'skipWaitingComplete' });
+          });
+        });
+      });
+      break;
   }
 
   /*
@@ -82,12 +98,14 @@ self.addEventListener('message', function(evt) {
   */
 
   // send message to all clients
+  /*
   self.clients.matchAll().then(clients => {
     clients.forEach(client => {
       // console.log('[sw] client.id :', client.id);
       client.postMessage(`your client.id is ${client.id}.`);
     });
   });
+  */
 });
 
 /*
@@ -96,3 +114,7 @@ self.addEventListener('message', function(evt) {
 self.addEventListener('push', function() {
   console.log('[sw] push');
 });
+
+function postAllClients(resolveCallback) {
+  self.clients.matchAll().then(resolveCallback);
+}
