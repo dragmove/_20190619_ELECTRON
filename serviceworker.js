@@ -3,14 +3,14 @@ self.addEventListener('install', evt => {
   console.log('[sw] install event. service worker installed.. evt :', evt);
 
   /*
-  // TODO: this method rescue the situation that user have to refresh app ?
+  // TODO: this method rescue the situation that user have to refresh app.
   // https://developers.google.com/web/fundamentals/primers/service-workers/lifecycle#skip_the_waiting_phase
   // https://bitsofco.de/what-self-skipwaiting-does-to-the-service-worker-lifecycle/
-  // 새로운 서비스워커가 install시, 즉시 이전의 서비스워커와 교체하도록 시도한다.
+  // 새로운 서비스워커가 install시, 즉시 이전의 서비스워커와 교체를 시도한다.
   self.skipWaiting().then(() => {
     console.log('[sw] 새 서비스워커 설치 후, resolve skipWaiting() promise');
 
-    // 이 단계에서는 client들의 확인이 불가하다. 시도 실패.
+    // 이 단계에서는 client들의 확인은 불가하다.
     postAllClients(clients => {
       console.log(
         `[sw] 새 서비스워커가 install되면, 자동으로 skipWaiting 실행 후 clients 갯수 확인 시도한다. clients :`,
