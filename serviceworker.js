@@ -1,6 +1,6 @@
 // https://developer.mozilla.org/en-US/docs/Web/API/ServiceWorkerGlobalScope/oninstall
 self.addEventListener('install', evt => {
-  console.log('[sw] install event. service worker installed.. evt :', evt);
+  console.log('[sw] install event. service worker installed. evt :', evt);
 
   /*
   // TODO: this method rescue the situation that user have to refresh app.

@@ -51,20 +51,21 @@
   </head>
 
   <body>
-    <a id="btn-send" class="btn" href="#">send some message to service worker</a>
+    <a id="btn-send" class="btn" href="#">서비스워커 측으로 message 를 전달한다.</a>
 
-    <a id="btn-open" class="btn" href="#">open new window</a>
+    <a id="btn-open" class="btn" href="#">새 window 열기</a>
 
     <a id="btn-skip-waiting" class="btn" href="#"
-      >service worker is on 'skip waiting' state. This site has new service worker to update. Please click here to see
-      changes.</a
+      >이 app은 update할 새 서비스워커를 가지고 있다. 새 서비스워커는 'waiting' 상태이다. DevTool의 Application >
+      Service Workers 화면을 연 상태로 click 하여 변화를 확인하라.</a
     >
 
     <div id="guide-refresh">
       <strong
-        >1st service worker is installed and activated, but you should refresh page to use new service worker.</strong
+        >첫번째 서비스워커가 installed 후 activated 되었으나, 이 서비스워커가 app을 제어하기 위해 새로고침해야
+        한다.</strong
       >
-      <a id="btn-refresh" class="btn" href="#">click to refresh</a>
+      <a id="btn-refresh" class="btn" href="#">click 하여 새로고침.</a>
     </div>
 
     <script src="./src/index.js"></script>

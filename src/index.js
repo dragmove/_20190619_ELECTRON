@@ -29,7 +29,7 @@ if (isSupportServiceWorker) {
           `[app] window client는 현재 서비스워커에 의해 제어되고 있지 않다. 첫번째 서비스워커가 즉각 activate 될 것이다.`
         );
 
-        // TODO: ISSUE: updatefound event cannot reliable.
+        // TODO: ISSUE: updatefound event cannot reliable ?
         // https://developer.mozilla.org/ko/docs/Web/API/ServiceWorkerRegistration#Examples
         registration.addEventListener('updatefound', () => {
           console.log('[app] registration.onupdatefound event. 첫번째 서비스워커가 updating 중이다.');
@@ -51,7 +51,23 @@ if (isSupportServiceWorker) {
           };
         });
 
+        /*
+        // TODO: Check
+        if (active && waiting) {
+          console.log('[app] active, waiting 상태의 서비스워커가 존재하는 것이 확인될 경우, waiting 상태의 서비스워커로 업데이트');
+          if (active.state === 'activated' && waiting.state === 'installed') waiting.postMessage({ action: 'skipWaiting' });
+        }
+        */
+
         return;
+      } else {
+        /*
+        // TODO: Check
+        if (active && waiting) {
+          console.log('[app] active, waiting 상태의 서비스워커가 존재하는 것이 확인될 경우, waiting 상태의 서비스워커로 업데이트');
+          if (active.state === 'activated' && waiting.state === 'installed') waiting.postMessage({ action: 'skipWaiting' });
+        }
+        */
       }
 
       showElement(openWindowBtn);
