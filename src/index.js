@@ -6,45 +6,45 @@ const isSupportServiceWorker = 'serviceWorker' in navigator,
 
 let postMessageBtn, openWindowBtn, skipWaitingBtn, refreshBtn;
 
-// install service worker
+// 서비스워커를 설치한다.
 if (isSupportServiceWorker) {
   navigator.serviceWorker
-    // don't change serviceworker.js url when you build new service worker
+    // 새로운 버전의 서비스워커를 배포할 때, serviceworker.js 파일의 URL을 변경하지 말라.
     .register('serviceworker.js')
     .then(registration => {
       console.log('[app] service worker registered. registration :', registration);
 
       const { active, installing, waiting } = registration;
       console.log('[app] register.then. active service worker :', active);
-      console.log('[app] register.then. installing service worker :', installing); // state value is 'installing'
+      console.log('[app] register.then. installing service worker :', installing);
       console.log('[app] register.then. waiting service worker :', waiting);
       console.log('[app] register.then. current activated service worker :', navigator.serviceWorker.controller);
 
-      // can detect changing state of installing service worker
+      // installing 서비스워커의 상태 변화를 감지할 수 있다.
       // https://developer.mozilla.org/en-US/docs/Web/API/ServiceWorkerRegistration
 
       if (!navigator.serviceWorker.controller) {
         // 기존에 설치되어 있는 서비스워커가 존재하지 않을 경우에만 발생
         console.log(
-          `[app] The window client isn't currently controlled by serview worker. so, it's a 1st service worker that will activate immediately`
+          `[app] window client는 현재 서비스워커에 의해 제어되고 있지 않다. 첫번째 서비스워커가 즉각 activate 될 것이다.`
         );
 
         // TODO: ISSUE: updatefound event cannot reliable.
         // https://developer.mozilla.org/ko/docs/Web/API/ServiceWorkerRegistration#Examples
         registration.addEventListener('updatefound', () => {
-          console.log('[app] registration.onupdatefound event. 1st service worker is updating.');
+          console.log('[app] registration.onupdatefound event. 첫번째 서비스워커가 updating 중이다.');
 
-          // you can set loading bar to inform installing service worker
+          // 서비스워커가 installing 되고 있음을 알리기 위해, loading bar 등을 세팅할 수 있다.
 
           const installingServiceWorker = registration.installing;
           installingServiceWorker.onstatechange = evt => {
-            console.log('[app] installingServiceWorker.onstatechange. state of 1st service worker :', evt.target.state); // 'installed' => 'activating' => 'activated'
+            console.log('[app] installingServiceWorker.onstatechange. 첫번째 서비스워커의 상태 :', evt.target.state); // 'installed' => 'activating' => 'activated'
 
             if (evt.target.state === 'activated') {
               console.log(
-                '[app] 1st service worker is installed and activated. but you should refresh page to use your 1st service worker.'
+                '[app] 첫번째 서비스워커가 installed 후 activated 되었다. 첫번째 서비스워커를 사용하기 위해, 사용자는 현재 app 을 새로고침 해야 한다.'
               );
-              console.log('[app] 1st navigator.serviceWorker.controller :', navigator.serviceWorker.controller);
+              console.log('[app] 첫번째 navigator.serviceWorker.controller :', navigator.serviceWorker.controller);
 
               showElement(document.querySelector('#guide-refresh'));
             }
@@ -61,31 +61,31 @@ if (isSupportServiceWorker) {
       });
     })
     .catch(function(err) {
-      console.log('[app] service worker registration failed :', err);
+      console.log('[app] service worker registration 실패. error :', err);
     });
 
   navigator.serviceWorker.addEventListener('controllerchange', evt => {
-    console.log('[app] navigator.serviceWorker controllerchange. evt :', evt);
+    console.log('[app] navigator.serviceWorker controllerchange event. evt :', evt);
   });
 
   navigator.serviceWorker.addEventListener('message', evt => {
     const data = evt.data;
 
-    console.log('[app] evt.data from service worker. evt.data :', data);
+    console.log('[app] 서비스워커 측으로부터 전달되는 evt.data :', data);
 
-    // all clients can receive message from service worker at the same time.
+    // 모든 client 들은 동시에 서비스워커로부터 message 를 받을 수 있다.
     if (!data) return;
 
     switch (data.action) {
       case 'skipWaitingComplete':
-        console.log('[app] receive skipWaitingComplete action from service worker :', data);
+        console.log('[app] 서비스워커로부터 skipWaitingComplete action을 받았다. data :', data);
 
         hideElement(skipWaitingBtn);
         break;
     }
   });
 } else {
-  console.log('[app] service worker is not supported.');
+  console.log('[app] 이 브라우저는 서비스워커를 지원하지 않는다.');
 }
 
 document.addEventListener('DOMContentLoaded', init);
@@ -97,34 +97,34 @@ function init() {
   postMessageBtn.onclick = evt => {
     evt.preventDefault();
 
-    if (!isSupportServiceWorker) throw new Error('[app] This browser does not support ServiceWorker.');
+    if (!isSupportServiceWorker) throw new Error('[app] 이 브라우저는 서비스워커를 지원하지 않는다.');
 
-    // send message to service worker normally
+    // message를 서비스워커로 전달한다.
     // navigator.serviceWorker.controller.postMessage({ msg: 'this is message from page' });
 
-    // send message to service worker using message channel
-    if (!isSupportMessageChannel) throw new Error('[app] This browser does not support MessageChannel.');
+    // message를 MessageChannel 을 사용하여, 서비스워커로 전달한다.
+    if (!isSupportMessageChannel) throw new Error('[app] 이 브라우저는 MessageChannel을 지원하지 않는다.');
 
     if (!navigator.serviceWorker.controller) {
       console.log('[app] navigator.serviceWorker :', navigator.serviceWorker);
-      throw new Error('[app] navigator.serviceWorker.controller is not defined.');
+      throw new Error('[app] navigator.serviceWorker.controller가 정의되어 있지 않다.');
     }
 
     const msgChannel = new MessageChannel();
     msgChannel.port1.onmessage = function(evt) {
       const data = evt.data;
-      console.log('[app] data received by port1 of message channel :', data);
+      console.log('[app] MessageChannel의 port1을 통해 전달 받은 data :', data);
 
       if (!data) return;
 
       switch (data.action) {
         case 'getClientNum':
-          console.log('[app] result of "getClientsNum" action :', data.value);
+          console.log('[app] "getClientsNum" action 호출 후, 서비스워커로부터 전달받은 결과. data.value :', data.value);
           break;
       }
     };
 
-    // send message with action, a port of message channel
+    // message를 action data와 함께 MessageChannel의 port로 전달한다.
     navigator.serviceWorker.controller.postMessage(
       {
         action: 'getClientsNum',
@@ -138,7 +138,7 @@ function init() {
     evt.preventDefault();
     const tmpWindowId = Math.floor(Math.random() * 10000000);
     const newWindow = window.open('./index.html', tmpWindowId, 'width=800,height=600;');
-    console.log('[app] new window or Electron browserWindowProxy instance :', newWindow);
+    console.log('[app] new window 또는 Electron browserWindowProxy 객체 :', newWindow);
   };
 
   skipWaitingBtn = document.querySelector('#btn-skip-waiting');
@@ -159,38 +159,35 @@ function onNewServiceWorker(registration, callback) {
 
   if (waiting) {
     console.log(
-      '[app] new service worker is waiting to activate. Can occur if multiple clients open and one of the clients is refreshed.'
+      '[app] 새 서비스워커가 activate 되기를 기다리고 있다. 여러 개의 client 들이 열려 있고, client 들 중 하나가 새로고침된다면 발생할 수 있다.'
     );
 
     return callback.call(null);
   }
 
   if (installing) {
-    console.log('[app] new service worker is installing');
+    console.log('[app] 새 서비스워커가 installing 상태이다.');
     return listenInstalledStateChange();
   }
 
   console.log(
-    '[app] currently controlled by service worker. a new service worker may be found. Add a listener in case a new service worker is found.'
+    '[app] 현재 기존 서비스워커에 의해 제어되고 있다. 새로운 서비스워커가 발견될 수 있다. 서비스워커가 발견되는 경우에 대해 listener 를 등록한다.'
   );
-  // can detect changing state of installing service worker
+
+  // installing 서비스워커의 상태 변화를 감지할 수 있다.
   // https://developer.mozilla.org/en-US/docs/Web/API/ServiceWorkerRegistration
   registration.addEventListener('updatefound', listenInstalledStateChange);
 
   function listenInstalledStateChange() {
     registration.installing.onstatechange = function(evt) {
       if (evt.target.state === 'installed') {
-        console.log('[app] new service worker is installed and available but its state is waiting. inform the user');
+        console.log(
+          '[app] 새로운 서비스워커가 installed 되었고, 사용 가능하지만 아직 waiting 상태이다. 사용자에게 이 상태를 알리도록 한다.'
+        );
         callback.call(null);
       }
 
-      /*
-      if (evt.target.state === 'activated') {
-        // TODO: 서비스 워커의 install 이벤트 발생시, self.skipwaiting 으로 인해 새로고침 없이도 자동 업데이트가 가능한 것으로 추측된다.
-        // 해당 이벤트 정상 발생시, update new service worker 시 유저에게 새로고침을 강요하는 상황을 없앨 수 있을 것으로 생각된다.
-        console.log('[app] new service worker is activated. serviceworker.controller is changed.');
-      }
-      */
+      // if (evt.target.state === 'activated') { console.log('[app] 새로운 서비스워커가 activated 되었다. serviceworker.controller가 변경되었다.'); }
     };
   }
 }
@@ -204,14 +201,14 @@ function setSkipWaitingBtn(registration) {
 
     const waitingServiceWorker = registration.waiting;
     if (!waitingServiceWorker) {
-      console.log('[app] ensure registration.waiting is available before calling postMessage()');
+      console.log('[app] postMessage() 실행 전에 registration.waiting 서비스워커가 사용가능한 상태인지 확인하라.');
       return;
     }
 
     waitingServiceWorker.postMessage({
       action: 'skipWaiting',
     });
-    // => receive 'skipWaitingComplete' action from service worker after call .skipWaiting() in service worker
+    // => 서비스워커의 self.skipWaiting() 실행 완료 후, 서비스워커 측에서 'skipWaitingComplete' action 을 postMessage 로 전달할 것이다.
   };
 }
 
