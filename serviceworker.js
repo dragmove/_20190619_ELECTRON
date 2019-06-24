@@ -5,23 +5,7 @@ self.addEventListener('install', evt => {
   // TODO: is this method rescue the situation that user have to do refresh ?
   // https://bitsofco.de/what-self-skipwaiting-does-to-the-service-worker-lifecycle/
   // https://developers.google.com/web/fundamentals/primers/service-workers/lifecycle#skip_the_waiting_phase
-  console.log('clients :', self.clients);
-
-  // TODO: confirm this solution
-  // https://developers.google.com/web/fundamentals/primers/service-workers/lifecycle#%EB%8C%80%EA%B8%B0_%EB%8B%A8%EA%B3%84_%EA%B1%B4%EB%84%88%EB%9B%B0%EA%B8%B0
-  self.skipWaiting().then(() => {
-    console.log('[sw] complete skipWaiting()');
-
-    /*
-    postAllClients(clients => {
-      console.log(`[sw] post 'skipWaitingComplete' message to all clients. clients :`, clients);
-
-      clients.forEach(client => {
-        client.postMessage({ action: 'skipWaitingComplete' });
-      });
-    });
-    */
-  });
+  console.log('[sw] self.clients :', self.clients);
 
   // postpone trigger 'install' evt until resolve promise.
   // evt.waitUntil( promise );
@@ -39,6 +23,19 @@ self.addEventListener('install', evt => {
 // https://developer.mozilla.org/en-US/docs/Web/API/ServiceWorkerGlobalScope/onactivate
 self.addEventListener('activate', evt => {
   console.log('[sw] activate event. service worker activated. evt :', evt);
+
+  // 서비스워커가 최초로 설치되면서 install 이벤트와 activate 이벤트가 발생했더라도,
+  // 곧바로 서비스워커가 제어하고 있는 client 는 찾을 수 없다.
+  // 새로 고침 이후부터 서비스워커가 client 들을 제어할 수 있다.
+  /*
+  postAllClients(clients => {
+    console.log(`[sw] post 'skipWaitingComplete' message to all clients. clients :`, clients);
+
+    clients.forEach(client => {
+      client.postMessage({ action: 'skipWaitingComplete' });
+    });
+  });
+  */
 });
 
 // https://developer.mozilla.org/en-US/docs/Web/API/ServiceWorkerGlobalScope/onfetch

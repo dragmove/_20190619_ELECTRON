@@ -1,3 +1,6 @@
+// TODO: confirm registration.update();
+// https://developers.google.com/web/fundamentals/primers/service-workers/lifecycle#%EC%88%98%EB%8F%99_%EC%97%85%EB%8D%B0%EC%9D%B4%ED%8A%B8
+
 const isSupportServiceWorker = 'serviceWorker' in navigator,
   isSupportMessageChannel = 'MessageChannel' in window;
 
@@ -11,9 +14,6 @@ if (isSupportServiceWorker) {
     .then(registration => {
       console.log('[app] service worker registered. registration :', registration);
 
-      // TODO: confirm registration.update();
-      // https://developers.google.com/web/fundamentals/primers/service-workers/lifecycle#%EC%88%98%EB%8F%99_%EC%97%85%EB%8D%B0%EC%9D%B4%ED%8A%B8
-
       const { active, installing, waiting } = registration;
       console.log('[app] register.then. active service worker :', active);
       console.log('[app] register.then. installing service worker :', installing); // state value is 'installing'
@@ -22,23 +22,11 @@ if (isSupportServiceWorker) {
 
       // can detect changing state of installing service worker
       // https://developer.mozilla.org/en-US/docs/Web/API/ServiceWorkerRegistration
-      /*
-      registration.addEventListener('updatefound', () => {
-        console.log('[app] registration.onupdatefound');
-
-        // If updatefound is fired, it means that there is a new service worker being installed.
-        // You can listen for changes to the installing service worker's state via installingWorker.onstatechange
-        const installingServiceWorker = registration.installing;
-        console.log('[app] A new service worker is being installed:', installingServiceWorker);
-        installingServiceWorker.onstatechange = evt => {
-          console.log('[app] installingServiceWorker.onstatechange :', evt.target.state); // 'installed' => 'activating' => 'activated'
-        };
-      });
-      */
 
       if (!navigator.serviceWorker.controller) {
+        // 기존에 설치되어 있는 서비스워커가 존재하지 않을 경우에만 발생
         console.log(
-          `[app] The window client isn't currently controlled by serview worker. so, it's a new service worker that will activate immediately`
+          `[app] The window client isn't currently controlled by serview worker. so, it's a 1st service worker that will activate immediately`
         );
 
         // TODO: ISSUE: updatefound event cannot reliable.
@@ -46,7 +34,7 @@ if (isSupportServiceWorker) {
         registration.addEventListener('updatefound', () => {
           console.log('[app] registration.onupdatefound event. 1st service worker is updating.');
 
-          // TODO: you can set loading bar to inform installing service worker
+          // you can set loading bar to inform installing service worker
 
           const installingServiceWorker = registration.installing;
           installingServiceWorker.onstatechange = evt => {
@@ -85,7 +73,7 @@ if (isSupportServiceWorker) {
 
     console.log('[app] evt.data from service worker. evt.data :', data);
 
-    // all browser/tab/app can get message from service worker at the same time.
+    // all clients can receive message from service worker at the same time.
     if (!data) return;
 
     switch (data.action) {
@@ -111,10 +99,10 @@ function init() {
 
     if (!isSupportServiceWorker) throw new Error('[app] This browser does not support ServiceWorker.');
 
-    // send message to service worker
+    // send message to service worker normally
     // navigator.serviceWorker.controller.postMessage({ msg: 'this is message from page' });
 
-    // use message channel
+    // send message to service worker using message channel
     if (!isSupportMessageChannel) throw new Error('[app] This browser does not support MessageChannel.');
 
     if (!navigator.serviceWorker.controller) {
@@ -196,11 +184,13 @@ function onNewServiceWorker(registration, callback) {
         callback.call(null);
       }
 
+      /*
       if (evt.target.state === 'activated') {
         // TODO: 서비스 워커의 install 이벤트 발생시, self.skipwaiting 으로 인해 새로고침 없이도 자동 업데이트가 가능한 것으로 추측된다.
         // 해당 이벤트 정상 발생시, update new service worker 시 유저에게 새로고침을 강요하는 상황을 없앨 수 있을 것으로 생각된다.
         console.log('[app] new service worker is activated. serviceworker.controller is changed.');
       }
+      */
     };
   }
 }
