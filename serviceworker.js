@@ -1,11 +1,24 @@
 // https://developer.mozilla.org/en-US/docs/Web/API/ServiceWorkerGlobalScope/oninstall
 self.addEventListener('install', evt => {
-  console.log('[sw] install event. service worker installed. evt :', evt);
+  console.log('[sw] install event. service worker installed.. evt :', evt);
 
-  // TODO: is this method rescue the situation that user have to do refresh ?
-  // https://bitsofco.de/what-self-skipwaiting-does-to-the-service-worker-lifecycle/
+  /*
+  // TODO: this method rescue the situation that user have to refresh app ?
   // https://developers.google.com/web/fundamentals/primers/service-workers/lifecycle#skip_the_waiting_phase
-  console.log('[sw] self.clients :', self.clients);
+  // https://bitsofco.de/what-self-skipwaiting-does-to-the-service-worker-lifecycle/
+  // 새로운 서비스워커가 install시, 즉시 이전의 서비스워커와 교체하도록 시도한다.
+  self.skipWaiting().then(() => {
+    console.log('[sw] 새 서비스워커 설치 후, resolve skipWaiting() promise');
+
+    // 이 단계에서는 client들의 확인이 불가하다. 시도 실패.
+    postAllClients(clients => {
+      console.log(
+        `[sw] 새 서비스워커가 install되면, 자동으로 skipWaiting 실행 후 clients 갯수 확인 시도한다. clients :`,
+        clients
+      );
+    });
+  });
+  */
 
   /*
   // 특정 파일들의 caching 이 완료될 때까지 'install' event 의 발생을 지연시킨다.
