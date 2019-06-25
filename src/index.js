@@ -2,7 +2,8 @@
 // https://developers.google.com/web/fundamentals/primers/service-workers/lifecycle#%EC%88%98%EB%8F%99_%EC%97%85%EB%8D%B0%EC%9D%B4%ED%8A%B8
 
 const isSupportServiceWorker = 'serviceWorker' in navigator,
-  isSupportMessageChannel = 'MessageChannel' in window;
+  isSupportMessageChannel = 'MessageChannel' in window,
+  isSupportWebSocket = 'WebSocket' in window;
 
 let postMessageBtn, openWindowBtn, skipWaitingBtn, refreshBtn;
 
@@ -61,6 +62,8 @@ if (isSupportServiceWorker) {
 
         return;
       } else {
+        console.log('navigator.serviceWorker.controller is exist');
+
         /*
         // TODO: Check
         if (active && waiting) {
@@ -68,6 +71,28 @@ if (isSupportServiceWorker) {
           if (active.state === 'activated' && waiting.state === 'installed') waiting.postMessage({ action: 'skipWaiting' });
         }
         */
+
+        // socket setting
+        if (isSupportWebSocket) {
+          const ws = new WebSocket('ws://localhost:9002'); // 'ws://echo.websocket.org/'
+
+          ws.onopen = evt => {
+            console.log('[client socket] open');
+            ws.send('ping');
+          };
+
+          ws.onerror = evt => {
+            console.log('[client socket] error');
+          };
+
+          ws.onmessage = evt => {
+            console.log('[client socket] message. evt.data :', evt.data);
+          };
+
+          ws.onclose = evt => {
+            console.log('[client socket] close');
+          };
+        }
       }
 
       showElement(openWindowBtn);

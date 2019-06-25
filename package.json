@@ -47,7 +47,8 @@
     }
   },
   "dependencies": {
-    "electron-squirrel-startup": "^1.0.0"
+    "electron-squirrel-startup": "^1.0.0",
+    "ws": "^7.0.1"
   },
   "devDependencies": {
     "@babel/cli": "^7.4.4",
