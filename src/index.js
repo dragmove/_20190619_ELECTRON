@@ -54,7 +54,7 @@ if (isSupportServiceWorker) {
         });
 
         if (active && !installing && !waiting) {
-          console.log('what case ?');
+          console.log('TODO: Check this case');
         }
 
         if (active && waiting) {
@@ -70,7 +70,7 @@ if (isSupportServiceWorker) {
         console.log('navigator.serviceWorker.controller가 존재한다.');
 
         /*
-        // TODO: Check
+        // TODO: Check this case
         if (active && waiting) {
           console.log('[app] active, waiting 상태의 서비스워커가 존재하는 것이 확인될 경우, waiting 상태의 서비스워커로 업데이트');
           if (active.state === 'activated' && waiting.state === 'installed') waiting.postMessage({ action: 'skipWaiting', from: 'client' });
