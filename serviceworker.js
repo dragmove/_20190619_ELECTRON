@@ -42,7 +42,7 @@ self.addEventListener('activate', evt => {
 
 // https://developer.mozilla.org/en-US/docs/Web/API/ServiceWorkerGlobalScope/onfetch
 self.addEventListener('fetch', function(evt) {
-  // console.log('Fetch request for :', evt.request.url);
+  console.log('[app] Fetch request for :', evt.request.url);
   // # payload response
   // evt.respondWith(fetch(evt.request));
   /*
