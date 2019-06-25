@@ -266,7 +266,7 @@ function hideElement(ele) {
 }
 
 function connectWebSocket() {
-  console.log('[app] connect web socket');
+  console.log('[app] web socket 접속 시도');
 
   if (ws) {
     ws.onopen = null;

@@ -94,7 +94,7 @@ self.addEventListener('message', evt => {
       postAllClients(_clients => {
         console.log('[sw] clients :', _clients);
 
-        // 현재 서비스워커가 제어하고 있는 client 갯수를 client 측에 전달한다.
+        // 현재 서비스워커가 제어하고 있는 client 갯수를 특정 port의 client에게만 전달한다.
         port.postMessage({
           action: 'clientsNum',
           value: _clients.length,
