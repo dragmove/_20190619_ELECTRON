@@ -6,6 +6,7 @@ const isSupportServiceWorker = 'serviceWorker' in navigator,
   isSupportWebSocket = 'WebSocket' in window;
 
 let postMessageBtn, openWindowBtn, skipWaitingBtn, refreshBtn;
+let ws;
 
 // 서비스워커를 설치한다.
 if (isSupportServiceWorker) {
@@ -52,47 +53,31 @@ if (isSupportServiceWorker) {
           };
         });
 
-        /*
-        // TODO: Check
-        if (active && waiting) {
-          console.log('[app] active, waiting 상태의 서비스워커가 존재하는 것이 확인될 경우, waiting 상태의 서비스워커로 업데이트');
-          if (active.state === 'activated' && waiting.state === 'installed') waiting.postMessage({ action: 'skipWaiting' });
+        if (active && !installing && !waiting) {
+          console.log('what case ?');
         }
-        */
+
+        if (active && waiting) {
+          console.log(
+            '[app] active, waiting 상태의 서비스워커가 존재하는 것이 확인될 경우, waiting 상태의 서비스워커로 업데이트'
+          );
+          if (active.state === 'activated' && waiting.state === 'installed')
+            waiting.postMessage({ action: 'skipWaiting', from: 'client' });
+        }
 
         return;
       } else {
-        console.log('navigator.serviceWorker.controller is exist');
+        console.log('navigator.serviceWorker.controller가 존재한다.');
 
         /*
         // TODO: Check
         if (active && waiting) {
           console.log('[app] active, waiting 상태의 서비스워커가 존재하는 것이 확인될 경우, waiting 상태의 서비스워커로 업데이트');
-          if (active.state === 'activated' && waiting.state === 'installed') waiting.postMessage({ action: 'skipWaiting' });
+          if (active.state === 'activated' && waiting.state === 'installed') waiting.postMessage({ action: 'skipWaiting', from: 'client' });
         }
         */
 
-        // socket setting
-        if (isSupportWebSocket) {
-          const ws = new WebSocket('ws://localhost:9002'); // 'ws://echo.websocket.org/'
-
-          ws.onopen = evt => {
-            console.log('[client socket] open');
-            ws.send('ping');
-          };
-
-          ws.onerror = evt => {
-            console.log('[client socket] error');
-          };
-
-          ws.onmessage = evt => {
-            console.log('[client socket] message. evt.data :', evt.data);
-          };
-
-          ws.onclose = evt => {
-            console.log('[client socket] close');
-          };
-        }
+        if (window.isIndex === true && isSupportWebSocket) connectWebSocket();
       }
 
       showElement(openWindowBtn);
@@ -111,8 +96,7 @@ if (isSupportServiceWorker) {
 
   navigator.serviceWorker.addEventListener('message', evt => {
     const data = evt.data;
-
-    console.log('[app] 서비스워커 측으로부터 전달되는 evt.data :', data);
+    // console.log('[app] 서비스워커 측으로부터 전달되는 evt.data :', data);
 
     // 모든 client 들은 동시에 서비스워커로부터 message 를 받을 수 있다.
     if (!data) return;
@@ -122,6 +106,13 @@ if (isSupportServiceWorker) {
         console.log('[app] 서비스워커로부터 skipWaitingComplete action을 받았다. data :', data);
 
         hideElement(skipWaitingBtn);
+
+        // close previous socket, and reconnect new socket.
+        connectWebSocket();
+        break;
+
+      case 'fromServiceWorkerFromWebSocket':
+        console.log('[app] 서비스워커로부터 fromServiceWorkerFromWebSocket action을 받았다. data :', data);
         break;
     }
   });
@@ -135,60 +126,70 @@ function init() {
   console.log('[app] DOMContentLoaded');
 
   postMessageBtn = document.querySelector('#btn-send');
-  postMessageBtn.onclick = evt => {
-    evt.preventDefault();
+  if (postMessageBtn) {
+    postMessageBtn.onclick = evt => {
+      evt.preventDefault();
 
-    if (!isSupportServiceWorker) throw new Error('[app] 이 브라우저는 서비스워커를 지원하지 않는다.');
+      if (!isSupportServiceWorker) throw new Error('[app] 이 브라우저는 서비스워커를 지원하지 않는다.');
 
-    // message를 서비스워커로 전달한다.
-    // navigator.serviceWorker.controller.postMessage({ msg: 'this is message from page' });
+      // message를 서비스워커로 전달한다.
+      // navigator.serviceWorker.controller.postMessage({ value: 'this is message from page', from: 'client' });
 
-    // message를 MessageChannel 을 사용하여, 서비스워커로 전달한다.
-    if (!isSupportMessageChannel) throw new Error('[app] 이 브라우저는 MessageChannel을 지원하지 않는다.');
+      // message를 MessageChannel 을 사용하여, 서비스워커로 전달한다.
+      if (!isSupportMessageChannel) throw new Error('[app] 이 브라우저는 MessageChannel을 지원하지 않는다.');
 
-    if (!navigator.serviceWorker.controller) {
-      console.log('[app] navigator.serviceWorker :', navigator.serviceWorker);
-      throw new Error('[app] navigator.serviceWorker.controller가 정의되어 있지 않다.');
-    }
-
-    const msgChannel = new MessageChannel();
-    msgChannel.port1.onmessage = function(evt) {
-      const data = evt.data;
-      console.log('[app] MessageChannel의 port1을 통해 전달 받은 data :', data);
-
-      if (!data) return;
-
-      switch (data.action) {
-        case 'getClientNum':
-          console.log('[app] "getClientsNum" action 호출 후, 서비스워커로부터 전달받은 결과. data.value :', data.value);
-          break;
+      if (!navigator.serviceWorker.controller) {
+        console.log('[app] navigator.serviceWorker :', navigator.serviceWorker);
+        throw new Error('[app] navigator.serviceWorker.controller가 정의되어 있지 않다.');
       }
-    };
 
-    // message를 action data와 함께 MessageChannel의 port로 전달한다.
-    navigator.serviceWorker.controller.postMessage(
-      {
-        action: 'getClientsNum',
-      },
-      [msgChannel.port2]
-    );
-  };
+      const msgChannel = new MessageChannel();
+      msgChannel.port1.onmessage = function(evt) {
+        const data = evt.data;
+        // console.log('[app] MessageChannel의 port1을 통해 서비스워커로부터 전달 받은 data :', data);
+
+        if (!data) return;
+
+        switch (data.action) {
+          case 'clientsNum':
+            console.log(
+              '[app] "getClientsNum" action 호출 후, 서비스워커로부터 전달받은 결과. data.value :',
+              data.value
+            );
+            break;
+        }
+      };
+
+      // message를 action data와 함께 MessageChannel의 port로 전달한다.
+      navigator.serviceWorker.controller.postMessage(
+        {
+          action: 'getClientsNum',
+          from: 'client',
+        },
+        [msgChannel.port2]
+      );
+    };
+  }
 
   openWindowBtn = document.querySelector('#btn-open');
-  openWindowBtn.onclick = evt => {
-    evt.preventDefault();
-    const tmpWindowId = Math.floor(Math.random() * 10000000);
-    const newWindow = window.open('./index.html', tmpWindowId, 'width=800,height=600;');
-    console.log('[app] new window 또는 Electron browserWindowProxy 객체 :', newWindow);
-  };
+  if (openWindowBtn) {
+    openWindowBtn.onclick = evt => {
+      evt.preventDefault();
+      const tmpWindowId = Math.floor(Math.random() * 10000000);
+      const newWindow = window.open('./popup.html', tmpWindowId, 'width=800,height=600;');
+      console.log('[app] new window 또는 Electron browserWindowProxy 객체 :', newWindow);
+    };
+  }
 
   skipWaitingBtn = document.querySelector('#btn-skip-waiting');
 
   refreshBtn = document.querySelector('#btn-refresh');
-  refreshBtn.onclick = evt => {
-    evt.preventDefault();
-    window.location.reload(false);
-  };
+  if (refreshBtn) {
+    refreshBtn.onclick = evt => {
+      evt.preventDefault();
+      window.location.reload(false);
+    };
+  }
 }
 
 function onNewServiceWorker(registration, callback) {
@@ -234,6 +235,8 @@ function onNewServiceWorker(registration, callback) {
 }
 
 function setSkipWaitingBtn(registration) {
+  if (!setSkipWaitingBtn) return;
+
   console.log('setSkipWaitingBtn');
   showElement(skipWaitingBtn);
 
@@ -248,6 +251,7 @@ function setSkipWaitingBtn(registration) {
 
     waitingServiceWorker.postMessage({
       action: 'skipWaiting',
+      from: 'client',
     });
     // => 서비스워커의 self.skipWaiting() 실행 완료 후, 서비스워커 측에서 'skipWaitingComplete' action 을 postMessage 로 전달할 것이다.
   };
@@ -259,4 +263,43 @@ function showElement(ele) {
 
 function hideElement(ele) {
   if (ele) ele.classList.remove('visible');
+}
+
+function connectWebSocket() {
+  console.log('[app] connect web socket');
+
+  if (ws) {
+    ws.onopen = null;
+    ws.onerror = null;
+    ws.onmessage = null;
+    // ws.onclose = null;
+    ws.close();
+
+    ws = null;
+  }
+
+  ws = new WebSocket('ws://localhost:9002'); // 'ws://echo.websocket.org/'
+
+  ws.onopen = evt => {
+    console.log('[client socket] open');
+  };
+
+  ws.onerror = error => {
+    console.log('[client socket] error :', error);
+  };
+
+  ws.onmessage = evt => {
+    const data = evt && evt.data ? JSON.parse(evt.data) : null;
+    console.log('[client socket] message from socket server :', data);
+
+    navigator.serviceWorker.controller.postMessage({
+      action: 'fromWebSocket',
+      value: data.value,
+      from: 'client',
+    });
+  };
+
+  ws.onclose = evt => {
+    console.log('[client socket] close');
+  };
 }

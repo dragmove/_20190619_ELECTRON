@@ -1,3 +1,5 @@
+const SERVICE_WORKER_NAME = 'serviceworker';
+
 // https://developer.mozilla.org/en-US/docs/Web/API/ServiceWorkerGlobalScope/oninstall
 self.addEventListener('install', evt => {
   console.log('[sw] install event. service worker installed. evt :', evt);
@@ -82,24 +84,29 @@ self.addEventListener('message', evt => {
   const data = evt.data,
     port = evt.ports[0]; // client의 MessageChannel의 port2를 전달 받는다.
 
-  console.log(`[sw] evt.data from client ${evt.source.id} :`, data);
-  console.log('[sw] evt.source :', evt.source); // e.g: { focused: true, frameType: "top-level", id: "893e3eef-1f4b-4eec-b1ae-e7a68eb70ffc", type: "window", url: "http://localhost:8443/", visibilityState: "visible" }
+  console.log(`[sw] evt.data from client ${evt.source.id}`);
+  // console.log('[sw] evt.source :', evt.source); // e.g: { focused: true, frameType: "top-level", id: "893e3eef-1f4b-4eec-b1ae-e7a68eb70ffc", type: "window", url: "http://localhost:8443/", visibilityState: "visible" }
 
   switch (data.action) {
     case 'getClientsNum':
-      self.clients.matchAll().then(_clients => {
+      console.group('+ [sw] ✉️ GET_CLIENTS_NUM');
+      console.log('[sw] get action:getClientsNum');
+      postAllClients(_clients => {
         console.log('[sw] clients :', _clients);
 
         // 현재 서비스워커가 제어하고 있는 client 갯수를 client 측에 전달한다.
         port.postMessage({
-          action: 'getClientNum',
+          action: 'clientsNum',
           value: _clients.length,
+          from: SERVICE_WORKER_NAME,
         });
       });
-
+      console.groupEnd();
       break;
 
     case 'skipWaiting':
+      console.group('+ [sw] ✉️ SKIP_WAITING');
+      console.log('[sw] get action:skipWaiting');
       self.skipWaiting().then(() => {
         console.log('[sw] resolve skipWaiting() promise');
 
@@ -110,17 +117,39 @@ self.addEventListener('message', evt => {
           );
 
           clients.forEach(client => {
-            client.postMessage({ action: 'skipWaitingComplete' });
+            client.postMessage({ action: 'skipWaitingComplete', from: SERVICE_WORKER_NAME });
           });
         });
       });
+      console.groupEnd();
+      break;
+
+    case 'fromWebSocket':
+      console.group('+ [sw] ✉️ FROM_WEB_SOCKET');
+      console.log('[sw] get action:fromWebSocket. data :', data);
+      console.log(`[sw] 모든 client 들에게 'fromServiceWorkerFromWebSocket' action을 postMessage로 전달한다`);
+
+      postAllClients(clients => {
+        clients.forEach(client => {
+          client.postMessage({
+            action: 'fromServiceWorkerFromWebSocket',
+            value: data.value,
+            clientId: client.id,
+            from: SERVICE_WORKER_NAME,
+          });
+        });
+      });
+      console.groupEnd();
       break;
   }
 
   /*
   // message를 전달한 한 client에게 message를 전달한다.
   this.self.clients.get(evt.source.id).then(client => {
-    client.postMessage(`client.id from clients.get(evt.source.id): ${evt.source.id}`);
+    client.postMessage({
+      value: `client.id from clients.get(evt.source.id): ${evt.source.id}`,
+      from: SERVICE_WORKER_NAME,
+    });
   });
   */
 
@@ -129,7 +158,10 @@ self.addEventListener('message', evt => {
   self.clients.matchAll().then(clients => {
     clients.forEach(client => {
       // console.log('[sw] client.id :', client.id);
-      client.postMessage(`your client.id is ${client.id}.`);
+      client.postMessage({
+        value: `your client.id is ${client.id}.`,
+        from: SERVICE_WORKER_NAME,
+      });
     });
   });
   */
