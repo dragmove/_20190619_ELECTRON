@@ -1,5 +1,5 @@
 # TEST ELECTRON + SERVICE WORKER
-
+Test serviceworker on web, electron environment.
 
 ## About
 * Test Electron App that load localhost web page and install service worker
