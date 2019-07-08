@@ -14,12 +14,40 @@ wss.on('connection', ws => {
   });
 
   // send message to client
+  var messageIndex = 0;
+
   setTimeout(() => {
-    ws.send(
-      JSON.stringify({
-        value: 'message from socket server',
-        from: 'server',
-      })
-    );
+    for (var i = 0; i < 10; i++) {
+      ws.send(JSON.stringify({ value: `hello! ${messageIndex}`, from: 'server' }));
+      messageIndex++;
+    }
   }, 5000);
+
+  setTimeout(() => {
+    for (var i = 0; i < 10; i++) {
+      ws.send(JSON.stringify({ value: `hello! ${messageIndex}`, from: 'server' }));
+      messageIndex++;
+    }
+  }, 5250);
+
+  setTimeout(() => {
+    for (var i = 0; i < 10; i++) {
+      ws.send(JSON.stringify({ value: `hello! ${messageIndex}`, from: 'server' }));
+      messageIndex++;
+    }
+  }, 5500);
+
+  setTimeout(() => {
+    for (var i = 0; i < 10; i++) {
+      ws.send(JSON.stringify({ value: `hello! ${messageIndex}`, from: 'server' }));
+      messageIndex++;
+    }
+  }, 5500);
+
+  setTimeout(() => {
+    for (var i = 0; i < 10; i++) {
+      ws.send(JSON.stringify({ value: `hello! ${messageIndex}`, from: 'server' }));
+      messageIndex++;
+    }
+  }, 6500);
 });

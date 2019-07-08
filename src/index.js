@@ -1,9 +1,7 @@
+import { isSupportServiceWorker, isSupportMessageChannel, isSupportWebSocket } from './utils';
+
 // TODO: confirm registration.update();
 // https://developers.google.com/web/fundamentals/primers/service-workers/lifecycle#%EC%88%98%EB%8F%99_%EC%97%85%EB%8D%B0%EC%9D%B4%ED%8A%B8
-
-const isSupportServiceWorker = 'serviceWorker' in navigator,
-  isSupportMessageChannel = 'MessageChannel' in window,
-  isSupportWebSocket = 'WebSocket' in window;
 
 let postMessageBtn, openWindowBtn, skipWaitingBtn, refreshBtn;
 let ws;
@@ -69,13 +67,11 @@ if (isSupportServiceWorker) {
       } else {
         console.log('navigator.serviceWorker.controller가 존재한다.');
 
-        /*
         // TODO: Check this case
-        if (active && waiting) {
-          console.log('[app] active, waiting 상태의 서비스워커가 존재하는 것이 확인될 경우, waiting 상태의 서비스워커로 업데이트');
-          if (active.state === 'activated' && waiting.state === 'installed') waiting.postMessage({ action: 'skipWaiting', from: 'client' });
-        }
-        */
+        // if (active && waiting) {
+        //   console.log('[app] active, waiting 상태의 서비스워커가 존재하는 것이 확인될 경우, waiting 상태의 서비스워커로 업데이트');
+        //   if (active.state === 'activated' && waiting.state === 'installed') waiting.postMessage({ action: 'skipWaiting', from: 'client' });
+        // }
 
         if (window.isIndex === true && isSupportWebSocket) connectWebSocket();
       }
@@ -288,6 +284,11 @@ function connectWebSocket() {
     console.log('[client socket] error :', error);
   };
 
+  ws.onclose = evt => {
+    console.log('[client socket] close');
+  };
+
+  /*
   ws.onmessage = evt => {
     const data = evt && evt.data ? JSON.parse(evt.data) : null;
     console.log('[client socket] message from socket server :', data);
@@ -298,8 +299,54 @@ function connectWebSocket() {
       from: 'client',
     });
   };
+  */
 
-  ws.onclose = evt => {
-    console.log('[client socket] close');
+  // 1초 내에 100개 이상 들어오면
+  // 100개씩 묶어서 1초마다 방출.
+
+  // 1초 내에 100개 미만이면,
+  // 방출
+
+  const INTERVAL_FLUSH_MESSAGES = 1000;
+
+  let isBuffering = false,
+    messageBuffer = [],
+    bufferInterval = null;
+  console.log('bufferInterval :', bufferInterval);
+
+  ws.onmessage = evt => {
+    const data = evt && evt.data ? JSON.parse(evt.data) : null;
+    messageBuffer.push(data);
+
+    if (!isBuffering) {
+      // 메세지가 하나라도 도착하면, buffer process 를 시작한다.
+      isBuffering = true;
+
+      bufferInterval = window.setInterval(flushMessages, INTERVAL_FLUSH_MESSAGES);
+    }
   };
+
+  function flushMessages() {
+    console.log('flush messages :', messageBuffer);
+
+    // TODO: 몇개씩 flush 할 것인가?
+
+    if (messageBuffer.length) {
+      // TODO: 아직 flush 해야 할 message 들이 남아 있다.
+    } else {
+      // TODO: 모든 message 가 flush 되었다.
+      window.clearInterval(bufferInterval);
+      bufferInterval = null;
+
+      isBuffering = false;
+    }
+  }
+
+  /*
+  navigator.serviceWorker.controller.postMessage({
+    action: 'fromWebSocket',
+    value: data.value,
+    from: 'client',
+  });
+  */
 }

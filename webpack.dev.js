@@ -1,10 +1,11 @@
 const path = require('path'),
+  webpack = require('webpack'),
   // https://webpack.js.org/plugins/terser-webpack-plugin/#root
   TerserWebpackPlugin = require('terser-webpack-plugin');
 
 module.exports = {
   entry: {
-    client: './src/index.js',
+    index: './src/index.js',
   },
 
   devtool: 'eval-source-map',
@@ -30,9 +31,11 @@ module.exports = {
         test: /\.jsx?$/,
         exclude: /node_modules/,
         loader: 'babel-loader',
+        /*
         options: {
           presets: ['@babel/preset-env'],
         },
+        */
       },
       {
         test: /\.jsx?$/,
@@ -72,5 +75,5 @@ module.exports = {
     // publicPath: ''
   },
 
-  plugins: [],
+  plugins: [new webpack.HotModuleReplacementPlugin()],
 };
