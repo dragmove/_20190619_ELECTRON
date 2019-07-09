@@ -18,36 +18,43 @@ wss.on('connection', ws => {
 
   setTimeout(() => {
     for (var i = 0; i < 10; i++) {
-      ws.send(JSON.stringify({ value: `hello! ${messageIndex}`, from: 'server' }));
+      ws.send(JSON.stringify({ value: `hello! ${messageIndex}`, from: 'server', createdAt: new Date().getTime() }));
       messageIndex++;
     }
-  }, 5000);
+  }, 3000);
 
   setTimeout(() => {
     for (var i = 0; i < 10; i++) {
-      ws.send(JSON.stringify({ value: `hello! ${messageIndex}`, from: 'server' }));
+      ws.send(JSON.stringify({ value: `hello! ${messageIndex}`, from: 'server', createdAt: new Date().getTime() }));
       messageIndex++;
     }
-  }, 5250);
+  }, 3250);
 
   setTimeout(() => {
     for (var i = 0; i < 10; i++) {
-      ws.send(JSON.stringify({ value: `hello! ${messageIndex}`, from: 'server' }));
+      ws.send(JSON.stringify({ value: `hello! ${messageIndex}`, from: 'server', createdAt: new Date().getTime() }));
       messageIndex++;
     }
-  }, 5500);
+  }, 3500);
 
   setTimeout(() => {
     for (var i = 0; i < 10; i++) {
-      ws.send(JSON.stringify({ value: `hello! ${messageIndex}`, from: 'server' }));
+      ws.send(JSON.stringify({ value: `hello! ${messageIndex}`, from: 'server', createdAt: new Date().getTime() }));
       messageIndex++;
     }
-  }, 5500);
+  }, 3900);
 
   setTimeout(() => {
     for (var i = 0; i < 10; i++) {
-      ws.send(JSON.stringify({ value: `hello! ${messageIndex}`, from: 'server' }));
+      ws.send(JSON.stringify({ value: `hello! ${messageIndex}`, from: 'server', createdAt: new Date().getTime() }));
       messageIndex++;
     }
-  }, 6500);
+  }, 4500);
+
+  setTimeout(() => {
+    for (var i = 0; i < 50; i++) {
+      ws.send(JSON.stringify({ value: `hello! ${messageIndex}`, from: 'server', createdAt: new Date().getTime() }));
+      messageIndex++;
+    }
+  }, 7000);
 });

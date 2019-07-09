@@ -286,6 +286,8 @@ function connectWebSocket() {
 
   ws.onclose = evt => {
     console.log('[client socket] close');
+
+    destroyBufferInterval();
   };
 
   /*
@@ -301,46 +303,50 @@ function connectWebSocket() {
   };
   */
 
-  // 1초 내에 100개 이상 들어오면
-  // 100개씩 묶어서 1초마다 방출.
-
-  // 1초 내에 100개 미만이면,
-  // 방출
-
+  // 1초 내에 10개 이상 들어오면, 메세지를 쌓는다. 남아 있는 메세지가 없을 때까지 10개씩 묶어서 1초마다 방출한다.
+  // 1초 내에 10개 미만이면, 모두 방출한다.
   const INTERVAL_FLUSH_MESSAGES = 1000;
+  const NUM_MESSAGES_PER_FLUSH = 10;
 
   let isBuffering = false,
-    messageBuffer = [],
+    messagesBuffer = [],
     bufferInterval = null;
-  console.log('bufferInterval :', bufferInterval);
+
+  function flushMessages() {
+    const messeagesToFlush = messagesBuffer.splice(0, NUM_MESSAGES_PER_FLUSH);
+
+    navigator.serviceWorker.controller.postMessage({
+      action: 'fromWebSocket',
+      value: messeagesToFlush,
+      from: 'client',
+    });
+
+    if (messagesBuffer.length > 0) {
+      // has messages to flush
+    } else {
+      // all messages are flushed
+      isBuffering = false;
+
+      destroyBufferInterval();
+    }
+  }
+
+  function destroyBufferInterval() {
+    window.clearInterval(bufferInterval);
+    bufferInterval = null;
+  }
 
   ws.onmessage = evt => {
     const data = evt && evt.data ? JSON.parse(evt.data) : null;
-    messageBuffer.push(data);
+    if (data) messagesBuffer.push(data);
 
     if (!isBuffering) {
-      // 메세지가 하나라도 도착하면, buffer process 를 시작한다.
       isBuffering = true;
 
+      destroyBufferInterval();
       bufferInterval = window.setInterval(flushMessages, INTERVAL_FLUSH_MESSAGES);
     }
   };
-
-  function flushMessages() {
-    console.log('flush messages :', messageBuffer);
-
-    // TODO: 몇개씩 flush 할 것인가?
-
-    if (messageBuffer.length) {
-      // TODO: 아직 flush 해야 할 message 들이 남아 있다.
-    } else {
-      // TODO: 모든 message 가 flush 되었다.
-      window.clearInterval(bufferInterval);
-      bufferInterval = null;
-
-      isBuffering = false;
-    }
-  }
 
   /*
   navigator.serviceWorker.controller.postMessage({
