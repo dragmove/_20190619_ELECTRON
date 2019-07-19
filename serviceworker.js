@@ -1,5 +1,16 @@
 const SERVICE_WORKER_NAME = 'serviceworker';
 
+let mainClientId = '';
+console.log('[sw] mainClientId :', mainClientId);
+
+function isMainClient(client) {
+  return client.url === 'http://localhost:9001/' && client.focused === true;
+}
+
+//
+// + implementation
+//
+
 // https://developer.mozilla.org/en-US/docs/Web/API/ServiceWorkerGlobalScope/oninstall
 self.addEventListener('install', evt => {
   console.log('[sw] install event. service worker installed. evt :', evt);
@@ -38,11 +49,25 @@ self.addEventListener('activate', evt => {
 
   // 서비스워커가 최초로 설치되면서 install 이벤트와 activate 이벤트가 발생했더라도, 그 즉시 서비스워커가 제어하고 있는 client 는 찾을 수 없다.
   // 새로 고침 이후부터 서비스워커가 client 들을 제어할 수 있다.
+  /*
+  // 서비스워커가 활성화 이후, 새로고침 하여 제어권을 가지게 되면, 이 'activate' 이벤트는 발생하지 않으므로 mainClientId 지정이 여기서는 불가하다.
+  postAllClients(_clients => {
+    console.log('clients :', _clients);
+
+    const focusedMainClient = _clients.filter(isMainClient)[0];
+    console.log('focusedMainClient :', focusedMainClient);
+
+    if (focusedMainClient) {
+      mainClientId = focusedMainClient.id;
+    }
+    console.log('mainClientId :', mainClientId);
+  });
+  */
 });
 
 // https://developer.mozilla.org/en-US/docs/Web/API/ServiceWorkerGlobalScope/onfetch
 self.addEventListener('fetch', function(evt) {
-  console.log('[app] Fetch request for :', evt.request.url);
+  console.log('[sw] Fetch request for :', evt.request.url);
   // # payload response
   // evt.respondWith(fetch(evt.request));
   /*
@@ -79,9 +104,11 @@ self.addEventListener('fetch', function(evt) {
  */
 // https://developer.mozilla.org/en-US/docs/Web/API/ServiceWorkerGlobalScope/onmessage
 self.addEventListener('message', evt => {
+  console.log('//');
   console.log('[sw] message event :', evt);
 
-  const data = evt.data,
+  const client = evt.source,
+    data = evt.data,
     port = evt.ports[0]; // client의 MessageChannel의 port2를 전달 받는다.
 
   console.log(`[sw] evt.data from client ${evt.source.id}`);
@@ -124,10 +151,23 @@ self.addEventListener('message', evt => {
       console.groupEnd();
       break;
 
+    case 'openWebSocket':
+      console.group('+ [sw] ✉️ FROM_CLIENT');
+      console.log('[sw] get action:openWebSocket. data :', data);
+      console.groupEnd();
+      break;
+
     case 'fromWebSocket':
       console.group('+ [sw] ✉️ FROM_WEB_SOCKET');
       console.log('[sw] get action:fromWebSocket. data :', data);
       console.log(`[sw] 모든 client 들에게 'fromServiceWorkerFromWebSocket' action을 postMessage로 전달한다`);
+      console.groupEnd();
+
+      // socket 서버 측으로부터, 각각의 index.html 에 연결된 socket 메세지가 전달된다.
+      // focused client 로부터 전달된 메세지가 아닐 경우, 무시하도록 한다.
+
+      console.log('[sw] client.focused :', client.focused);
+      if (!client.focused) return;
 
       postAllClients(clients => {
         clients.forEach(client => {
@@ -139,7 +179,7 @@ self.addEventListener('message', evt => {
           });
         });
       });
-      console.groupEnd();
+
       break;
   }
 

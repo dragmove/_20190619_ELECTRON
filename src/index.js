@@ -3,8 +3,11 @@ import { isSupportServiceWorker, isSupportMessageChannel, isSupportWebSocket } f
 // TODO: confirm registration.update();
 // https://developers.google.com/web/fundamentals/primers/service-workers/lifecycle#%EC%88%98%EB%8F%99_%EC%97%85%EB%8D%B0%EC%9D%B4%ED%8A%B8
 
-let postMessageBtn, openWindowBtn, skipWaitingBtn, refreshBtn;
+let postMessageBtn, openWindowBtn, skipWaitingBtn, refreshBtn, requestSocketMessageBtn;
 let ws;
+
+const isIndexPage = window.isIndex; // window.isIndex 라면 index.html 페이지
+let hasServiceWorkerController = false;
 
 // 서비스워커를 설치한다.
 if (isSupportServiceWorker) {
@@ -24,6 +27,8 @@ if (isSupportServiceWorker) {
       // https://developer.mozilla.org/en-US/docs/Web/API/ServiceWorkerRegistration
 
       if (!navigator.serviceWorker.controller) {
+        hasServiceWorkerController = false;
+
         // 기존에 설치되어 있는 서비스워커가 존재하지 않을 경우에만 발생
         console.log(
           `[app] window client는 현재 서비스워커에 의해 제어되고 있지 않다. 첫번째 서비스워커가 즉각 activate 될 것이다.`
@@ -65,6 +70,8 @@ if (isSupportServiceWorker) {
 
         return;
       } else {
+        hasServiceWorkerController = true;
+
         console.log('navigator.serviceWorker.controller가 존재한다.');
 
         // TODO: Check this case
@@ -73,7 +80,7 @@ if (isSupportServiceWorker) {
         //   if (active.state === 'activated' && waiting.state === 'installed') waiting.postMessage({ action: 'skipWaiting', from: 'client' });
         // }
 
-        if (window.isIndex === true && isSupportWebSocket) connectWebSocket();
+        if (isIndexPage && isSupportWebSocket) connectWebSocket();
       }
 
       showElement(openWindowBtn);
@@ -186,6 +193,27 @@ function init() {
       window.location.reload(false);
     };
   }
+
+  requestSocketMessageBtn = document.querySelector('#btn-request-socket-message');
+  if (requestSocketMessageBtn) {
+    requestSocketMessageBtn.onclick = evt => {
+      evt.preventDefault();
+
+      if (!ws) {
+        window.alert('no web socket connection');
+        return;
+      }
+
+      ws.send(
+        JSON.stringify({
+          action: 'REQUEST_SOCKET_MESSAGE',
+          value: `hello! I'm client.`,
+          from: 'client',
+          createdAt: new Date().getTime(),
+        })
+      );
+    };
+  }
 }
 
 function onNewServiceWorker(registration, callback) {
@@ -277,7 +305,15 @@ function connectWebSocket() {
   ws = new WebSocket('ws://localhost:9002'); // 'ws://echo.websocket.org/'
 
   ws.onopen = evt => {
-    console.log('[client socket] open');
+    console.log('[client socket] open a socket connection :', evt);
+
+    navigator.serviceWorker.controller.postMessage({
+      action: 'openWebSocket',
+      value: `I'm client. I've opend web socket`,
+      from: 'client',
+      isIndexPage,
+      hasServiceWorkerController,
+    });
   };
 
   ws.onerror = error => {
@@ -287,11 +323,14 @@ function connectWebSocket() {
   ws.onclose = evt => {
     console.log('[client socket] close');
 
-    destroyBufferInterval();
+    // TODO: socket 이 끊어질 때 처리해줘야 하는 일은? 'ㅅ')?
+
+    // destroyBufferInterval();
   };
 
-  /*
   ws.onmessage = evt => {
+    console.log('[client socket] onmessage');
+
     const data = evt && evt.data ? JSON.parse(evt.data) : null;
     console.log('[client socket] message from socket server :', data);
 
@@ -301,8 +340,8 @@ function connectWebSocket() {
       from: 'client',
     });
   };
-  */
 
+  /*
   // 1초 내에 10개 이상 들어오면, 메세지를 쌓는다. 남아 있는 메세지가 없을 때까지 10개씩 묶어서 1초마다 방출한다.
   // 1초 내에 10개 미만이면, 모두 방출한다.
   const INTERVAL_FLUSH_MESSAGES = 1000;
@@ -347,12 +386,5 @@ function connectWebSocket() {
       bufferInterval = window.setInterval(flushMessages, INTERVAL_FLUSH_MESSAGES);
     }
   };
-
-  /*
-  navigator.serviceWorker.controller.postMessage({
-    action: 'fromWebSocket',
-    value: data.value,
-    from: 'client',
-  });
   */
 }

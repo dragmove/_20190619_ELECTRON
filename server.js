@@ -10,9 +10,47 @@ wss.on('connection', ws => {
   console.log('[socket server] success connection');
 
   ws.on('message', message => {
-    console.log(`[socket server] from client : ${message}`);
+    console.log('[socket server] message :', message);
+
+    switch (message.action) {
+      case 'REQUEST_SOCKET_MESSAGE':
+        // TODO: socket 서버 측으로부터 index.js 측으로 메세지가 전달되는 동작이 되어야 하는데? 'ㅅ')?
+        /*
+        ws.send(
+          JSON.stringify({
+            value: `This is dummy message from socket server`,
+            from: 'server',
+            createdAt: new Date().getTime(),
+          })
+        );
+        */
+        break;
+    }
   });
 
+  /*
+  setTimeout(() => {
+    ws.send(
+      JSON.stringify({
+        value: `hello! I'm socket server. 1st message`,
+        from: 'server',
+        createdAt: new Date().getTime(),
+      })
+    );
+  }, 5000);
+
+  setTimeout(() => {
+    ws.send(
+      JSON.stringify({
+        value: `hello! I'm socket server. 2nd message`,
+        from: 'server',
+        createdAt: new Date().getTime(),
+      })
+    );
+  }, 10000);
+  */
+
+  /*
   // send message to client
   var messageIndex = 0;
 
@@ -57,4 +95,5 @@ wss.on('connection', ws => {
       messageIndex++;
     }
   }, 7000);
+  */
 });
