@@ -11,8 +11,8 @@ Test serviceworker on web, electron environment.
 npm i -g @electron-forge/cli // https://www.electronforge.io/cli
 npm install
 
-// If you try to connect socket only on index.html, run socket server
-// node server.js
+// If you try to connect socket only on index.html, run socket server by nodemon
+// npm run start:socket-server
 
 // Web App
 npm run start:web // run and connect http://localhost:9001 Web App

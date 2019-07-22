@@ -114,8 +114,8 @@ if (isSupportServiceWorker) {
         connectWebSocket();
         break;
 
-      case 'fromServiceWorkerFromWebSocket':
-        console.log('[app] 서비스워커로부터 fromServiceWorkerFromWebSocket action을 받았다. data :', data);
+      case 'FROM_SERVICE_WORKER_FROM_SOCKET_SERVER':
+        console.log('[app] 서비스워커로부터 FROM_SERVICE_WORKER_FROM_SOCKET_SERVER action을 받았다. data :', data);
         break;
     }
   });
@@ -335,7 +335,7 @@ function connectWebSocket() {
     console.log('[client socket] message from socket server :', data);
 
     navigator.serviceWorker.controller.postMessage({
-      action: 'fromWebSocket',
+      action: 'FROM_SOCKET_SERVER',
       value: data.value,
       from: 'client',
     });

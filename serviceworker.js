@@ -157,28 +157,31 @@ self.addEventListener('message', evt => {
       console.groupEnd();
       break;
 
-    case 'fromWebSocket':
-      console.group('+ [sw] ✉️ FROM_WEB_SOCKET');
-      console.log('[sw] get action:fromWebSocket. data :', data);
-      console.log(`[sw] 모든 client 들에게 'fromServiceWorkerFromWebSocket' action을 postMessage로 전달한다`);
+    case 'FROM_SOCKET_SERVER':
+      console.group('+ [sw] ✉️ FROM_SOCKET_SERVER');
+      console.log('[sw] get action:FROM_SOCKET_SERVER. data :', data);
+      console.log(`[sw] 모든 client 들에게 'FROM_SERVICE_WORKER_FROM_SOCKET_SERVER' action을 postMessage로 전달한다`);
       console.groupEnd();
 
       // socket 서버 측으로부터, 각각의 index.html 에 연결된 socket 메세지가 전달된다.
       // focused client 로부터 전달된 메세지가 아닐 경우, 무시하도록 한다.
 
       console.log('[sw] client.focused :', client.focused);
+
+      /*
       if (!client.focused) return;
 
       postAllClients(clients => {
         clients.forEach(client => {
           client.postMessage({
-            action: 'fromServiceWorkerFromWebSocket',
+            action: 'FROM_SERVICE_WORKER_FROM_SOCKET_SERVER',
             value: data.value,
             clientId: client.id,
             from: SERVICE_WORKER_NAME,
           });
         });
       });
+      */
 
       break;
   }

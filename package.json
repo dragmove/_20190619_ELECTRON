@@ -5,6 +5,7 @@
   "description": "test electron app",
   "private": true,
   "scripts": {
+    "start:socket-server": "nodemon server.js",
     "start:web": "webpack-dev-server --config webpack.dev.js",
     "start": "electron-forge start",
     "package": "electron-forge package",
@@ -48,9 +49,8 @@
   },
   "dependencies": {
     "electron-squirrel-startup": "^1.0.0",
-    "ws": "^7.0.1",
-    "rxjs": "^6.2.2",
-    "rxjs-compat": "^6.2.2"
+    "nodemon": "^1.19.1",
+    "ws": "^7.0.1"
   },
   "devDependencies": {
     "@babel/cli": "^7.4.4",

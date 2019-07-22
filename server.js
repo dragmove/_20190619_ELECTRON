@@ -12,18 +12,21 @@ wss.on('connection', ws => {
   ws.on('message', message => {
     console.log('[socket server] message :', message);
 
-    switch (message.action) {
+    const obj = JSON.parse(message);
+    switch (obj.action) {
       case 'REQUEST_SOCKET_MESSAGE':
-        // TODO: socket 서버 측으로부터 index.js 측으로 메세지가 전달되는 동작이 되어야 하는데? 'ㅅ')?
-        /*
-        ws.send(
-          JSON.stringify({
-            value: `This is dummy message from socket server`,
-            from: 'server',
-            createdAt: new Date().getTime(),
-          })
-        );
-        */
+        console.log('wss.clients :', wss.clients);
+
+        // send message from socket server to client
+        const data = JSON.stringify({
+          value: `This is a dummy message from socket server`,
+          from: 'server',
+          createdAt: new Date().getTime(),
+        });
+
+        wss.clients.forEach(client => {
+          if (client.readyState === WebSocket.OPEN) client.send(data);
+        });
         break;
     }
   });
