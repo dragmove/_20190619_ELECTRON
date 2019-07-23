@@ -15,8 +15,6 @@ wss.on('connection', ws => {
     const obj = JSON.parse(message);
     switch (obj.action) {
       case 'REQUEST_SOCKET_MESSAGE':
-        console.log('wss.clients :', wss.clients);
-
         // send message from socket server to client
         const data = JSON.stringify({
           value: `This is a dummy message from socket server`,

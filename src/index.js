@@ -1,13 +1,12 @@
-import { isSupportServiceWorker, isSupportMessageChannel, isSupportWebSocket } from './utils';
+import { isSupportServiceWorker, isSupportWebSocket } from './utils';
 
-// TODO: confirm registration.update();
+// + Reference
 // https://developers.google.com/web/fundamentals/primers/service-workers/lifecycle#%EC%88%98%EB%8F%99_%EC%97%85%EB%8D%B0%EC%9D%B4%ED%8A%B8
 
-let postMessageBtn, openWindowBtn, skipWaitingBtn, refreshBtn, requestSocketMessageBtn;
-let ws;
-
 const isIndexPage = window.isIndex; // window.isIndex 라면 index.html 페이지
-let hasServiceWorkerController = false;
+
+let ws;
+let postMessageBtn, openWindowBtn, skipWaitingBtn, refreshBtn, requestSocketMessageBtn;
 
 // 서비스워커를 설치한다.
 if (isSupportServiceWorker) {
@@ -27,8 +26,6 @@ if (isSupportServiceWorker) {
       // https://developer.mozilla.org/en-US/docs/Web/API/ServiceWorkerRegistration
 
       if (!navigator.serviceWorker.controller) {
-        hasServiceWorkerController = false;
-
         // 기존에 설치되어 있는 서비스워커가 존재하지 않을 경우에만 발생
         console.log(
           `[app] window client는 현재 서비스워커에 의해 제어되고 있지 않다. 첫번째 서비스워커가 즉각 activate 될 것이다.`
@@ -38,8 +35,6 @@ if (isSupportServiceWorker) {
         // https://developer.mozilla.org/ko/docs/Web/API/ServiceWorkerRegistration#Examples
         registration.addEventListener('updatefound', () => {
           console.log('[app] registration.onupdatefound event. 첫번째 서비스워커가 updating 중이다.');
-
-          // 서비스워커가 installing 되고 있음을 알리기 위해, loading bar 등을 세팅할 수 있다.
 
           const installingServiceWorker = registration.installing;
           installingServiceWorker.onstatechange = evt => {
@@ -57,7 +52,7 @@ if (isSupportServiceWorker) {
         });
 
         if (active && !installing && !waiting) {
-          console.log('TODO: Check this case');
+          // console.log('TODO: Check');
         }
 
         if (active && waiting) {
@@ -70,17 +65,26 @@ if (isSupportServiceWorker) {
 
         return;
       } else {
-        hasServiceWorkerController = true;
+        console.log('[app] navigator.serviceWorker.controller가 존재한다.');
 
-        console.log('navigator.serviceWorker.controller가 존재한다.');
-
-        // TODO: Check this case
+        // TODO: Check
         // if (active && waiting) {
         //   console.log('[app] active, waiting 상태의 서비스워커가 존재하는 것이 확인될 경우, waiting 상태의 서비스워커로 업데이트');
         //   if (active.state === 'activated' && waiting.state === 'installed') waiting.postMessage({ action: 'skipWaiting', from: 'client' });
         // }
 
-        if (isIndexPage && isSupportWebSocket) connectWebSocket();
+        // message를 action data와 함께 MessageChannel의 port로 전달한다.
+        if (isSupportWebSocket) {
+          navigator.serviceWorker.controller.postMessage({
+            action: 'REQUIRE_CONNECT_SOCKET',
+            value: {
+              isIndexPage,
+            },
+            from: 'client',
+          });
+        } else {
+          window.alert('[app] 이 브라우저는 웹 소켓을 지원하지 않는다.');
+        }
       }
 
       showElement(openWindowBtn);
@@ -99,28 +103,43 @@ if (isSupportServiceWorker) {
 
   navigator.serviceWorker.addEventListener('message', evt => {
     const data = evt.data;
-    // console.log('[app] 서비스워커 측으로부터 전달되는 evt.data :', data);
+    console.log('[app] 서비스워커 측으로부터 전달되는 evt.data :', data);
 
     // 모든 client 들은 동시에 서비스워커로부터 message 를 받을 수 있다.
     if (!data) return;
 
     switch (data.action) {
-      case 'skipWaitingComplete':
-        console.log('[app] 서비스워커로부터 skipWaitingComplete action을 받았다. data :', data);
-
-        hideElement(skipWaitingBtn);
-
-        // close previous socket, and reconnect new socket.
+      case 'CONFIRM_CAN_CONNECT_SOCKET':
+        console.log('[app] "CONFIRM_CAN_CONNECT_SOCKET" : 소켓 연결 허용');
         connectWebSocket();
         break;
 
-      case 'FROM_SERVICE_WORKER_FROM_SOCKET_SERVER':
-        console.log('[app] 서비스워커로부터 FROM_SERVICE_WORKER_FROM_SOCKET_SERVER action을 받았다. data :', data);
+      case 'CONFIRM_BAN_CONNECT_SOCKET':
+        console.log('[app] "CONFIRM_BAN_CONNECT_SOCKET" : 소켓 연결 비허용');
+        window.alert('이미 소켓 연결되어 있는 client 가 존재하므로, 소켓 연결을 허용하지 않는다.');
+        break;
+
+      case 'SHOULD_CONNECT_SOCKET':
+        console.log('[app] 서비스워커로부터 SHOULD_CONNECT_SOCKET action을 받았다');
+        connectWebSocket();
+        break;
+
+      case 'SKIP_WAITING_COMPLETE':
+        console.log('[app] 서비스워커로부터 SKIP_WAITING_COMPLETE action을 받았다.');
+        console.log('[app] 새로운 서비스워커를 사용할 수 있게 되었다.');
+
+        hideElement(skipWaitingBtn);
+
+        // TODO: 이걸 socket 이 연결되어 있는 페이지, 연결 안 되어 있는 페이지, 새로 연 페이지에서 실행하여 테스트할 것.
+
+        // TODO: 서비스워커만 업데이트되어 skip waiting 시도하여 완료되었을 경우
+        // close previous socket, and reconnect new socket.
+        // connectWebSocket();
         break;
     }
   });
 } else {
-  console.log('[app] 이 브라우저는 서비스워커를 지원하지 않는다.');
+  window.alert('[app] 이 브라우저는 서비스워커를 지원하지 않는다.');
 }
 
 document.addEventListener('DOMContentLoaded', init);
@@ -133,44 +152,20 @@ function init() {
     postMessageBtn.onclick = evt => {
       evt.preventDefault();
 
-      if (!isSupportServiceWorker) throw new Error('[app] 이 브라우저는 서비스워커를 지원하지 않는다.');
-
-      // message를 서비스워커로 전달한다.
-      // navigator.serviceWorker.controller.postMessage({ value: 'this is message from page', from: 'client' });
-
-      // message를 MessageChannel 을 사용하여, 서비스워커로 전달한다.
-      if (!isSupportMessageChannel) throw new Error('[app] 이 브라우저는 MessageChannel을 지원하지 않는다.');
+      if (!isSupportServiceWorker) {
+        window.alert('[app] 이 브라우저는 서비스워커를 지원하지 않는다.');
+        throw new Error('[app] 이 브라우저는 서비스워커를 지원하지 않는다.');
+      }
 
       if (!navigator.serviceWorker.controller) {
-        console.log('[app] navigator.serviceWorker :', navigator.serviceWorker);
+        window.alert('[app] navigator.serviceWorker.controller가 정의되어 있지 않다.');
         throw new Error('[app] navigator.serviceWorker.controller가 정의되어 있지 않다.');
       }
 
-      const msgChannel = new MessageChannel();
-      msgChannel.port1.onmessage = function(evt) {
-        const data = evt.data;
-        // console.log('[app] MessageChannel의 port1을 통해 서비스워커로부터 전달 받은 data :', data);
-
-        if (!data) return;
-
-        switch (data.action) {
-          case 'clientsNum':
-            console.log(
-              '[app] "getClientsNum" action 호출 후, 서비스워커로부터 전달받은 결과. data.value :',
-              data.value
-            );
-            break;
-        }
-      };
-
-      // message를 action data와 함께 MessageChannel의 port로 전달한다.
-      navigator.serviceWorker.controller.postMessage(
-        {
-          action: 'getClientsNum',
-          from: 'client',
-        },
-        [msgChannel.port2]
-      );
+      navigator.serviceWorker.controller.postMessage({
+        action: 'GET_CLIENTS_NUM',
+        from: 'client',
+      });
     };
   }
 
@@ -259,24 +254,37 @@ function onNewServiceWorker(registration, callback) {
 }
 
 function setSkipWaitingBtn(registration) {
-  if (!setSkipWaitingBtn) return;
-
   console.log('setSkipWaitingBtn');
+  if (!skipWaitingBtn) return;
+
   showElement(skipWaitingBtn);
 
   skipWaitingBtn.onclick = evt => {
     evt.preventDefault();
 
+    console.log('registration :', registration);
+
+    // TODO: waiting 서비스워커의 skipWaiting 이 필요한데,
+    // 문제는 이 녀석이 기존의 서비스워커가 가지고 있던 clientsInfoObj 정보를 가지고 있지 않다는 것이다.
+    // registration.active 은 현재 clientsInfoObj 정보를 가지고 있고,
+    // registration.waiting 은 현재 초기화 상태이며, 아무 정보도 가지고 있지 않다.
+
+    // waiting 서비스워커측으로 REQUIRE_SKIP_WAITING 요청하여 완료되었을 경우,
+    // 모든 client 로부터 현재 각자의 socket 연결 여부를 전달 받도록 하여 clientObj 를 갱신하면 될까? 'ㅅ')?
+
+    /*
     const waitingServiceWorker = registration.waiting;
     if (!waitingServiceWorker) {
+      window.alert('[app] postMessage() 실행 전에 registration.waiting 서비스워커가 사용가능한 상태인지 확인하라.');
       console.log('[app] postMessage() 실행 전에 registration.waiting 서비스워커가 사용가능한 상태인지 확인하라.');
       return;
     }
 
     waitingServiceWorker.postMessage({
-      action: 'skipWaiting',
+      action: 'REQUIRE_SKIP_WAITING',
       from: 'client',
     });
+    */
     // => 서비스워커의 self.skipWaiting() 실행 완료 후, 서비스워커 측에서 'skipWaitingComplete' action 을 postMessage 로 전달할 것이다.
   };
 }
@@ -293,12 +301,12 @@ function connectWebSocket() {
   console.log('[app] web socket 접속 시도');
 
   if (ws) {
+    ws.close();
+
     ws.onopen = null;
     ws.onerror = null;
     ws.onmessage = null;
-    // ws.onclose = null;
-    ws.close();
-
+    ws.onclose = null;
     ws = null;
   }
 
@@ -308,22 +316,31 @@ function connectWebSocket() {
     console.log('[client socket] open a socket connection :', evt);
 
     navigator.serviceWorker.controller.postMessage({
-      action: 'openWebSocket',
-      value: `I'm client. I've opend web socket`,
+      action: 'OPENED_SOCKET',
       from: 'client',
-      isIndexPage,
-      hasServiceWorkerController,
     });
   };
 
   ws.onerror = error => {
     console.log('[client socket] error :', error);
+
+    window.alert('socket 연결을 할 수 없습니다.');
+
+    // socket 연결 시도 도중, 에러가 발생하는 경우
+    navigator.serviceWorker.controller.postMessage({
+      action: 'ERROR_SOCKET',
+      from: 'client',
+    });
   };
 
   ws.onclose = evt => {
     console.log('[client socket] close');
 
-    // TODO: socket 이 끊어질 때 처리해줘야 하는 일은? 'ㅅ')?
+    // socket 연결 이후 정상 작동 중, socket 측 이상으로 connection close
+    navigator.serviceWorker.controller.postMessage({
+      action: 'CLOSED_SOCKET',
+      from: 'client',
+    });
 
     // destroyBufferInterval();
   };
@@ -388,3 +405,15 @@ function connectWebSocket() {
   };
   */
 }
+
+window.onbeforeunload = function(evt) {
+  if (!navigator.serviceWorker.controller) return;
+
+  navigator.serviceWorker.controller.postMessage({
+    action: 'CLOSED_CLIENT',
+    value: {
+      isIndexPage,
+    },
+    from: 'client',
+  });
+};
