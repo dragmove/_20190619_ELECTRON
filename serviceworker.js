@@ -1,8 +1,8 @@
 const SERVICE_WORKER_NAME = 'serviceworker';
 
-let clientsInfoObj = {};
+let clientInfos = {};
 
-function findFromObject(obj, conditionFunc) {
+function findByCondition(obj, conditionFunc) {
   let val;
   for (const key in obj) {
     if (!obj.hasOwnProperty(key)) continue;
@@ -14,31 +14,34 @@ function findFromObject(obj, conditionFunc) {
   return undefined;
 }
 
-function syncClientsInfoObj(clientIds = []) {
-  for (const id in clientsInfoObj) {
+function syncClientInfos(clientIds = []) {
+  for (const id in clientInfos) {
     if (clientIds.indexOf(id) >= 0) {
-      console.log(`clientsInfoObj 관리 하의 ${id} 가 실제 client id 에 존재하므로 삭제하지 않음.`);
+      console.log(`clientInfos 내 client id ${id} 가 실제 clients 로 존재하므로 제거하지 않음.`);
     } else {
-      console.log(`clientsInfoObj 관리 하의 ${id} 가 실제 client id 에 존재하므로 삭제하지 않음.`);
-      delete clientsInfoObj[id];
+      console.log(`clientInfos 내 client id ${id} 가 실제 clients 로 존재하지 않으므로 제거.`);
+      delete clientInfos[id];
     }
   }
+}
+
+function postAllClients(resolveCallback) {
+  self.clients.matchAll().then(resolveCallback);
 }
 
 //
 // + implementation
 //
-
 // https://developer.mozilla.org/en-US/docs/Web/API/ServiceWorkerGlobalScope/oninstall
 self.addEventListener('install', evt => {
   console.log('[sw] install event. service worker installed. evt :', evt);
 
   /*
-  // TODO: this method rescue the situation that user have to refresh app.
+  // This way is not recommended.
   // https://developers.google.com/web/fundamentals/primers/service-workers/lifecycle#skip_the_waiting_phase
   // https://bitsofco.de/what-self-skipwaiting-does-to-the-service-worker-lifecycle/
-  // 새로운 서비스워커가 install시, 즉시 이전의 서비스워커와 교체를 시도한다.
   self.skipWaiting().then(() => {
+    // 새로운 서비스워커 install시, 즉시 이전의 서비스워커와 교체를 시도한다.
     console.log('[sw] 새 서비스워커 설치 후, resolve skipWaiting() promise');
 
     // 이 단계에서는 client들의 확인은 불가하다.
@@ -54,9 +57,7 @@ self.addEventListener('install', evt => {
   /*
   // 특정 파일들의 caching 이 완료될 때까지 'install' event 의 발생을 지연시킨다.
   evt.waitUntil(
-    caches.open('gih-cache').then(function(cache) {
-      return cache.add('/index-offline.html')
-    })
+    caches.open('gih-cache').then(function(cache) { return cache.add('/index-offline.html') })
   )
   */
 });
@@ -66,12 +67,12 @@ self.addEventListener('activate', evt => {
   console.log('[sw] activate event. service worker activated. evt :', evt);
 
   // 서비스워커가 최초로 설치되면서 install 이벤트와 activate 이벤트가 발생했더라도, 그 즉시 서비스워커가 제어하고 있는 client 는 찾을 수 없다.
-  // 새로 고침 이후부터 서비스워커가 client 들을 제어할 수 있다.
+  // 새로고침 이후부터 서비스워커가 client 들을 제어할 수 있다.
 });
 
 // https://developer.mozilla.org/en-US/docs/Web/API/ServiceWorkerGlobalScope/onfetch
 self.addEventListener('fetch', function(evt) {
-  console.log('[sw] Fetch request for :', evt.request.url);
+  // console.log('[sw] Fetch request for :', evt.request.url);
   // # payload response
   // evt.respondWith(fetch(evt.request));
   /*
@@ -108,28 +109,22 @@ self.addEventListener('fetch', function(evt) {
  */
 // https://developer.mozilla.org/en-US/docs/Web/API/ServiceWorkerGlobalScope/onmessage
 self.addEventListener('message', evt => {
-  console.log('//');
-  console.log('clientsInfoObj :', clientsInfoObj);
-
-  console.log('[sw] message event :', evt);
+  console.log('// message //');
 
   const client = evt.source,
     data = evt.data;
-  // port = evt.ports[0]; // client의 MessageChannel의 port2를 전달 받는다.
 
+  console.log('[sw] message event :', evt);
   console.log(`[sw] client id: ${evt.source.id}`);
   console.log('[sw] client :', client);
-  // console.log('port :', port);
-  // console.log('[sw] evt.source :', evt.source); // e.g: { focused: true, frameType: "top-level", id: "893e3eef-1f4b-4eec-b1ae-e7a68eb70ffc", type: "window", url: "http://localhost:8443/", visibilityState: "visible" }
 
   let clientObj = null;
   switch (data.action) {
     case 'REQUIRE_CONNECT_SOCKET':
       console.log('+ [sw] ✉️ REQUIRE_CONNECT_SOCKET :', data);
 
-      clientObj = clientsInfoObj[client.id] || null;
-      if (!clientObj) {
-        clientsInfoObj[client.id] = {
+      if (!clientInfos[client.id]) {
+        clientInfos[client.id] = {
           frameType: client.frameType,
           id: client.id,
           type: client.type,
@@ -139,164 +134,198 @@ self.addEventListener('message', evt => {
           isConnectedSocket: false,
         };
       }
-      console.log('clientsInfoObj :', clientsInfoObj);
+      clientObj = clientInfos[client.id];
 
       postAllClients(_clients => {
-        const clientIds = _clients.map(c => c.id); // []
+        const clientIds = _clients.map(c => c.id);
 
         if (_clients.length <= 1) {
-          // client 가 하나 뿐이므로, 이 client 에 socket 을 연결하도록 허용한다.
-          syncClientsInfoObj(clientIds);
-          console.log('[sw] clientsInfoObj :', clientsInfoObj);
+          // one client
+          console.log(`[sw] 새 client ${evt.source.id} 의 소켓 연결을 허용한다.`);
 
-          if (clientObj) clientObj.isConnectingSocket = true;
+          syncClientInfos(clientIds);
+
+          clientObj.isConnectingSocket = true;
 
           client.postMessage({
             action: 'CONFIRM_CAN_CONNECT_SOCKET',
             from: SERVICE_WORKER_NAME,
           });
         } else {
-          // client 가 여러 개이므로 주의가 필요하다.
-          syncClientsInfoObj(clientIds);
+          // multi clients
+          syncClientInfos(clientIds);
 
-          const clientInfos = Object.values(clientsInfoObj);
-          const clientsConnectingSocket = clientInfos.filter(
-            obj => obj.id !== client.id && obj.isConnectingSocket === true
-          );
-          const clientsConnectedSocket = clientInfos.filter(
-            obj => obj.id !== client.id && obj.isConnectedSocket === true
-          );
+          const otherClientsConnectingSocket = Object.values(clientInfos).filter(
+              obj => obj.id !== client.id && obj.isConnectingSocket === true
+            ),
+            otherClientsConnectedSocket = Object.values(clientInfos).filter(
+              obj => obj.id !== client.id && obj.isConnectedSocket === true
+            );
 
-          if (clientsConnectingSocket.length > 0) {
+          if (otherClientsConnectingSocket.length > 0) {
             console.log(
               `[sw] 기존 clientS 중 소켓 연결 중인 client 가 존재한다. 새 client 는 소켓 연결할 필요가 없다. 
               소켓 연결 중인 client 의 연결이 성공적으로 이루어지지 않는지, OPENED_SOCKET 또는 ERROR_SOCKET 이벤트를 단지 기다린다.`
             );
-          } else if (clientsConnectedSocket.length > 0) {
+          } else if (otherClientsConnectedSocket.length > 0) {
             console.log(
-              `[sw] 이미 소켓 연결이 되어 있는 client ${
-                clientsConnectedSocket[0].id
-              } 가 존재하므로, 새 client 는 소켓 연결을 하지 않는다.`
+              `[sw] 이미 소켓 연결이 되어 있는 client ${otherClientsConnectedSocket[0].id} 가 존재하므로, 새 client ${
+                evt.source.id
+              } 는 소켓 연결을 하지 않는다.`
             );
           } else {
             console.log(
-              '[sw] 소켓 연결 중이거나 연결이 되어 있는 client 가 존재하지 않으므로, 새 client 에 소켓 연결을 시도한다.'
+              '[sw] 소켓 연결중(connecting)이거나 연결되어 있는(connected) client 가 존재하지 않으므로, 소켓 연결을 요청한 client 에 소켓 연결을 시도한다.'
             );
+            clientObj.isConnectingSocket = true;
 
-            // TODO: 새로운 client 에 소켓 연결을 시도하도록 한다.
+            client.postMessage({
+              action: 'CONFIRM_CAN_CONNECT_SOCKET',
+              from: SERVICE_WORKER_NAME,
+            });
           }
 
-          // TODO: 테스트
-          // 소켓 연결되어 있는 첫번째 탭 이후에
+          console.log('[sw] clientInfos :', clientInfos);
 
-          // 1. 새로운 탭 열기 => 새로운 client 가 등록되는 것을 확인할 수 있다. => 테스트 필요
-          // 2. 열린 새로운 탭의 새로고침 => client id 가 변경되는 것을 확인할 수 있다. => 테스트 필요
-          // 3. 기존에 socket 연결되어 있던 탭의 새로고침 => close 되는 순간에 'CLOSED_CLIENT' 이벤트가 전달되어, 다른 탭의 소켓 연결이 시작되는 상황에서
+          // + 멀티 clients 소켓 연결 관리를 위한 테스트 케이스
+          // 첫번째 client(1) 열린 후에 소켓 연결 이후,
 
-          /*
-          clientObj = clientsInfoObj[client.id] || null;
-          if (clientObj) clientObj.isConnectedSocket = true;
+          // 1. 새 client(2) 열기
+          // 1-1. 소켓 연결 상태의 client(1) 가 존재하므로, client(2) 에 소켓 연결이 되지 않아야 한다.
+          // 1-2. 소켓 비연결 상태의 client(2) 닫기 => client(1) 의 소켓 연결 변화 없음. 서비스워커의 client 관리 업데이트
+          // 1-3. 소켓 비연결 상태의 client(2) 새로고침 => 새로고침한 client(2) id 의 변경 => 새로고침한 client(2) 에 소켓 연결이 되지 않아야 한다. 서비스워커의 client 관리 업데이트
 
-          client.postMessage({
-            action: 'CONFIRM_BAN_CONNECT_SOCKET',
-            from: SERVICE_WORKER_NAME,
-          });
-          */
+          // 2. 새 client(2) 열기
+          // 2-1. 소켓 연결 상태의 client(1) 새로고침 => 소켓 비연결 상태의 client(2) 에 소켓 연결 시도 => client(1) 은 client id 변경되며 소켓 연결하지 않음. 서비스워커의 client 관리 업데이트.
+          // 2-2-1. 소켓 비연결 상태의 client(2) 에 소켓 연결 성공 => 서비스워커의 client 관리 업데이트.
+          // 2-2-2. 소켓 비연결 상태의 client(2) 에 소켓 연결 실패 => 소켓 연결된 client 없음. 사용자를 위한 안내 및 소켓 재접속 UI 표기, 서비스워커의 client 관리 업데이트
+          // 2-2-3. 소켓 비연결 상태의 client(2) 에 소켓 연결 도중 client(2) 닫기 => 소켓 비연결 상태의 client(1) 이 존재하므로, client(1) 에 소켓 연결 시도 // TODO: 실테스트 환경 구성 후, 테스트 필요.
+          // 2-2-4. 소켓 비연결 상태의 client(2) 에 소켓 연결 도중 client(2) 새로고침 => 새로고침한 client(2) 는 client id 변경. 소켓 비연결 상태의 client(1) 이 존재하므로, client(1) 에 소켓 연결 시도 // TODO: 실테스트 환경 구성 후, 테스트 필요.
+
+          // 2-3. 소켓 연결 상태의 client(1) 닫기 => 소켓 비연결 상태의 client(2) 에 소켓 연결 시도
+          // 2-3-1. 소켓 비연결 상태의 client(2) 에 소켓 연결 성공 => 서비스워커의 client 관리 업데이트.
+          // 2-3-2. 소켓 비연결 상태의 client(2) 에 소켓 연결 실패 => 소켓 연결된 client 없음. 사용자를 위한 안내 및 소켓 재접속 UI 표기, 서비스워커의 client 관리 업데이트
+          // 2-3-3. 소켓 비연결 상태의 client(2) 에 소켓 연결 도중 client(2) 닫기 => 앱 종료 및 모든 팝업의 종료 // TODO: 비즈니스 로직 구현 필요
+          // 2-3-3. 소켓 비연결 상태의 client(2) 에 소켓 연결 도중 client(2) 새로고침 => client(2) 는 client id 변경되며 소켓 연결 시도 // // TODO: 실테스트 환경 구성 후, 테스트 필요.
+
+          // 3. 소켓 연결 상태의 client 가 존재하나, 소켓 서버 측 등의 이슈로 소켓 연결 해제
+          // 3-1. 소켓 연결된 client 없음. 사용자를 위한 안내 및 소켓 재접속 UI 표기, 서비스워커의 client 관리 업데이트
         }
       });
 
       break;
 
     case 'OPENED_SOCKET':
+      // client 의 소켓 연결
       console.log('+ [sw] ✉️ OPENED_SOCKET :', data);
-      clientObj = clientsInfoObj[client.id] || null;
+
+      clientObj = clientInfos[client.id] || null;
       if (clientObj) {
         clientObj.isConnectingSocket = false;
         clientObj.isConnectedSocket = true;
       }
-
-      postAllClients(_clients => {
-        console.log('[sw] OPENED_SOCKET clients 재조사 :', _clients);
-      });
-
       break;
 
     case 'ERROR_SOCKET':
-      // client 웹 페이지에서 socket connection 이 실패한 경우
+      // client 의 소켓 연결 실패
       console.log('+ [sw] ✉️ ERROR_SOCKET :', data);
-      clientObj = clientsInfoObj[client.id] || null;
+
+      clientObj = clientInfos[client.id] || null;
       if (clientObj) {
         clientObj.isConnectingSocket = false;
         clientObj.isConnectedSocket = false;
       }
 
-      // TODO: 소켓 연결을 시도하려고 하다가 실패했는데, 이 경우 현재 모든 clients 어디에도 소켓 연결이 안 되어 있는지 체크하여 조치를 취해야 한다.
-
+      const hasClientRelatedSocket =
+        Object.values(clientInfos).filter(obj => obj.isConnectingSocket === true || obj.isConnectedSocket === true)
+          .length > 0;
+      if (!hasClientRelatedSocket) {
+        console.log(
+          '[sw] 소켓 연결중 or 연결되어 있는 client 는 없다. TODO: 사용자를 위한 안내 및 소켓 재접속 UI 표기 필요.'
+        );
+      }
       break;
 
     case 'CLOSED_SOCKET':
       // client 웹 페이지는 열려 있으나, socket connection 이 close 된 경우
-      clientObj = clientsInfoObj[client.id] || null;
+      clientObj = clientInfos[client.id] || null;
       if (clientObj) {
         clientObj.isConnectingSocket = false;
         clientObj.isConnectedSocket = false;
       }
 
-      // TODO: 소켓 연결되어 있던 페이지의 소켓 연결이 어떠한 이유로 인하여 끊겼는데, 재연결을 하는 조치를 취해야 한다.
-
+      const hasClientRelatedSocket =
+        Object.values(clientInfos).filter(obj => obj.isConnectingSocket === true || obj.isConnectedSocket === true)
+          .length > 0;
+      if (!hasClientRelatedSocket) {
+        console.log(
+          '[sw] 소켓 연결중 or 연결되어 있는 client 는 없다. TODO: 사용자를 위한 안내 및 소켓 재접속 UI 표기 필요.'
+        );
+      }
       break;
 
     case 'CLOSED_CLIENT':
-      // client 웹 페이지가 닫힐 때 index 페이지였다면, 이 프로세스를 수행한다.
+      // client 가 닫힐 때 index 페이지였다면, 이 프로세스를 수행한다.
       console.log('+ [sw] ✉️ CLOSED_CLIENT :', data);
 
-      const closedClientObj = clientsInfoObj[client.id] || null;
-      if (closedClientObj) {
-        if (closedClientObj.isIndexPage) {
-          if (closedClientObj.isConnectingSocket || closedClientObj.isConnectedSocket) {
-            // 대체 소켓 연결할 페이지를 찾는다.
-            delete clientsInfoObj[client.id];
+      const closedClientInfo = clientInfos[client.id] || null;
+      if (closedClientInfo) {
+        if (closedClientInfo.isIndexPage === true) {
+          // in index page
 
-            const obj = findFromObject(clientsInfoObj, obj => obj && obj.isIndexPage === true);
-            if (obj) {
-              console.log('소켓 연결 중인 페이지가 close 되어, 이후 소켓 연결할 index 페이지 :', obj);
+          if (closedClientInfo.isConnectingSocket === true || closedClientInfo.isConnectedSocket === true) {
+            // 소켓 연결중 or 연결되어 있던 client 가 닫혔으므로, 소켓 연결할 새로운 client 를 찾는다.
+            delete clientInfos[client.id];
+
+            const clientInfo = findByCondition(clientInfos, obj => obj && obj.isIndexPage === true);
+            if (clientInfo) {
+              console.log('[sw] 소켓 연결 중인 페이지가 close 되어, 이후 소켓 연결할 client info :', clientInfo);
 
               self.clients
-                .get(obj.id)
-                .then(clientToConnectSocket => {
-                  obj.isConnectingSocket = true;
-                  obj.isConnectedSocket = false;
+                .get(clientInfo.id)
+                .then(client => {
+                  clientInfo.isConnectingSocket = true;
+                  clientInfo.isConnectedSocket = false;
+                  console.log('[sw] resolved. clientInfos :', clientInfos);
 
-                  clientToConnectSocket.postMessage({
+                  client.postMessage({
                     action: 'SHOULD_CONNECT_SOCKET',
                     from: SERVICE_WORKER_NAME,
                   });
                 })
                 .catch(error => {
-                  obj.isConnectingSocket = false;
-                  obj.isConnectedSocket = false;
+                  clientInfo.isConnectingSocket = false;
+                  clientInfo.isConnectedSocket = false;
+                  console.log('[sw] rejected. clientInfos :', clientInfos);
 
-                  // TODO: 소켓 연결하려고 했던 client 에 접근하지 못 한 상황.
-                  // 어떻게 할 것인가?
+                  console.log(
+                    '[sw] 소켓 연결중 or 연결되어 있던 client close 후, 새로운 client 에 소켓 연결 시도 실패.'
+                  );
+                  console.log(
+                    '[sw] 소켓 연결중 or 연결되어 있는 client 는 없다. TODO: 사용자를 위한 안내 및 소켓 재접속 UI 표기 필요.'
+                  );
                 });
             } else {
-              console.log('다음에 소켓 연결할, 다른 index 페이지가 없다.');
-              // TODO:
+              console.log(
+                '[sw] 소켓 연결중 or 연결되어 있던 client close 후, 소켓 연결할 index page 의 client 가 존재하지 않는다.'
+              );
             }
           } else {
-            delete clientsInfoObj[client.id];
+            // 소켓 연결중이 아닌 and 연결되어 있지 않았던 client 가 닫혔으므로, 닫힌 client 에 대한 정보 제거
+            delete clientInfos[client.id];
+
+            console.log('[sw] clientInfos :', clientInfos);
           }
         } else {
-          // TODO: 팝업 페이지
+          // TODO: // in popup
+          console.log('[sw] TODO: popup 이 닫혔어요.');
         }
       }
-
-      console.log('CLOSED_CLIENT 작업 후 clientsInfoObj :', clientsInfoObj);
       break;
 
     case 'REQUIRE_SKIP_WAITING':
       console.group('+ [sw] ✉️ REQUIRE_SKIP_WAITING');
-      console.log('[app] before skipWaiting clientsInfoObj :', JSON.stringify(clientsInfoObj));
+      console.log('[sw] before skipWaiting clientInfos :', JSON.stringify(clientInfos));
 
       /*
       self
@@ -310,7 +339,7 @@ self.addEventListener('message', evt => {
               clients
             );
 
-            console.log('[app] after skipWaiting clientsInfoObj :', JSON.stringify(clientsInfoObj));
+            console.log('[sw] after skipWaiting clientInfos :', JSON.stringify(clientInfos));
 
             // 모든 client 들에게 skipWaiting 이 성공했음을 전달한다.
             clients.forEach(client => {
@@ -355,8 +384,8 @@ self.addEventListener('message', evt => {
       break;
       */
 
-    case 'GET_CLIENTS_NUM':
-      console.group('+ [sw] ✉️ GET_CLIENTS_NUM');
+    case 'PRINT_CLIENTS_NUM':
+      console.group('+ [sw] ✉️ PRINT_CLIENTS_NUM');
       postAllClients(_clients => {
         console.log('[sw] clients :', _clients);
       });
@@ -387,7 +416,3 @@ self.addEventListener('message', evt => {
   });
   */
 });
-
-function postAllClients(resolveCallback) {
-  self.clients.matchAll().then(resolveCallback);
-}

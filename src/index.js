@@ -114,11 +114,6 @@ if (isSupportServiceWorker) {
         connectWebSocket();
         break;
 
-      case 'CONFIRM_BAN_CONNECT_SOCKET':
-        console.log('[app] "CONFIRM_BAN_CONNECT_SOCKET" : 소켓 연결 비허용');
-        window.alert('이미 소켓 연결되어 있는 client 가 존재하므로, 소켓 연결을 허용하지 않는다.');
-        break;
-
       case 'SHOULD_CONNECT_SOCKET':
         console.log('[app] 서비스워커로부터 SHOULD_CONNECT_SOCKET action을 받았다');
         connectWebSocket();
@@ -163,7 +158,7 @@ function init() {
       }
 
       navigator.serviceWorker.controller.postMessage({
-        action: 'GET_CLIENTS_NUM',
+        action: 'PRINT_CLIENTS_NUM',
         from: 'client',
       });
     };
@@ -195,7 +190,7 @@ function init() {
       evt.preventDefault();
 
       if (!ws) {
-        window.alert('no web socket connection');
+        window.alert('[app] no web socket connection');
         return;
       }
 
