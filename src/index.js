@@ -5,6 +5,8 @@ import { isSupportServiceWorker, isSupportWebSocket } from './utils';
 
 const isIndexPage = window.isIndex; // window.isIndex 라면 index.html 페이지
 
+let clientId = null;
+
 let ws;
 let postMessageBtn, openWindowBtn, skipWaitingBtn, refreshBtn, requestSocketMessageBtn;
 
@@ -109,15 +111,36 @@ if (isSupportServiceWorker) {
     if (!data) return;
 
     switch (data.action) {
+      case 'CONFIRM_BAN_CONNECT_SOCKET':
+        console.log('[app] "CONFIRM_BAN_CONNECT_SOCKET" : 소켓 연결 비허용');
+        clientId = data.value.id;
+        console.log('clientId :', clientId);
+        break;
+
       case 'CONFIRM_CAN_CONNECT_SOCKET':
         console.log('[app] "CONFIRM_CAN_CONNECT_SOCKET" : 소켓 연결 허용');
+        clientId = data.value.id;
+        console.log('clientId :', clientId);
+
         connectWebSocket();
         break;
 
       case 'SHOULD_CONNECT_SOCKET':
         console.log('[app] 서비스워커로부터 SHOULD_CONNECT_SOCKET action을 받았다');
+        clientId = data.value.id;
+        console.log('clientId :', clientId);
+
         connectWebSocket();
         break;
+
+      /*
+      case 'SEND_CLIENT_INFOS_FOR_SKIP_WAITING':
+        console.log('[app] SEND_CLIENT_INFOS_FOR_SKIP_WAITING');
+        console.log('data.value :', data.value);
+
+        // TODO: 이걸 waiting 서비스워커로 전달을 해줘야 한다.
+        break;
+      */
 
       case 'SKIP_WAITING_COMPLETE':
         console.log('[app] 서비스워커로부터 SKIP_WAITING_COMPLETE action을 받았다.');
@@ -159,6 +182,7 @@ function init() {
 
       navigator.serviceWorker.controller.postMessage({
         action: 'PRINT_CLIENTS_NUM',
+        value: { isIndexPage },
         from: 'client',
       });
     };
@@ -267,14 +291,25 @@ function setSkipWaitingBtn(registration) {
     // waiting 서비스워커측으로 REQUIRE_SKIP_WAITING 요청하여 완료되었을 경우,
     // 모든 client 로부터 현재 각자의 socket 연결 여부를 전달 받도록 하여 clientObj 를 갱신하면 될까? 'ㅅ')?
 
-    /*
-    const waitingServiceWorker = registration.waiting;
-    if (!waitingServiceWorker) {
-      window.alert('[app] postMessage() 실행 전에 registration.waiting 서비스워커가 사용가능한 상태인지 확인하라.');
-      console.log('[app] postMessage() 실행 전에 registration.waiting 서비스워커가 사용가능한 상태인지 확인하라.');
+    const waitingServiceWorker = registration.waiting,
+      activeServiceWorker = registration.active;
+    if (!waitingServiceWorker || !activeServiceWorker) {
+      window.alert('[app] 서비스워커의 skipWaiting 실행을 위한 active or waiting 서비스워커가 존재하지 않는다.');
       return;
     }
 
+    // TODO: 아래의 시나리오가 가능한 것인지 타진 필요 'ㅅ')/
+    // 모든 페이지의 정보가 담긴 clientInfos 를 이슈가 있을 때마다 전달 받아 index.js 에서도 들고 있다가
+    // 이것을 waiting 서비스워커로 넘겨 주면서, skipWaiting 을 발생시키고 곧바로 active 상태가 된 서비스워커의 clientInfos 에 넣는다.
+
+    /*
+    activeServiceWorker.postMessage({
+      action: 'REQUIRE_CLIENT_INFOS_FOR_SKIP_WAITING',
+      from: 'client',
+    });
+    */
+
+    /*
     waitingServiceWorker.postMessage({
       action: 'REQUIRE_SKIP_WAITING',
       from: 'client',
@@ -318,8 +353,7 @@ function connectWebSocket() {
 
   ws.onerror = error => {
     console.log('[client socket] error :', error);
-
-    window.alert('socket 연결을 할 수 없습니다.');
+    window.alert('[client socket] socket 연결을 할 수 없습니다.');
 
     // socket 연결 시도 도중, 에러가 발생하는 경우
     navigator.serviceWorker.controller.postMessage({
@@ -406,9 +440,7 @@ window.onbeforeunload = function(evt) {
 
   navigator.serviceWorker.controller.postMessage({
     action: 'CLOSED_CLIENT',
-    value: {
-      isIndexPage,
-    },
+    value: { isIndexPage },
     from: 'client',
   });
 };

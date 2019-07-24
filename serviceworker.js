@@ -115,10 +115,12 @@ self.addEventListener('message', evt => {
     data = evt.data;
 
   console.log('[sw] message event :', evt);
-  console.log(`[sw] client id: ${evt.source.id}`);
+  console.log(`[sw] client id: ${client.id}`);
   console.log('[sw] client :', client);
 
   let clientObj = null;
+  let hasClientRelatedSocket = false;
+
   switch (data.action) {
     case 'REQUIRE_CONNECT_SOCKET':
       console.log('+ [sw] ✉️ REQUIRE_CONNECT_SOCKET :', data);
@@ -149,6 +151,7 @@ self.addEventListener('message', evt => {
 
           client.postMessage({
             action: 'CONFIRM_CAN_CONNECT_SOCKET',
+            value: { id: client.id },
             from: SERVICE_WORKER_NAME,
           });
         } else {
@@ -167,12 +170,24 @@ self.addEventListener('message', evt => {
               `[sw] 기존 clientS 중 소켓 연결 중인 client 가 존재한다. 새 client 는 소켓 연결할 필요가 없다. 
               소켓 연결 중인 client 의 연결이 성공적으로 이루어지지 않는지, OPENED_SOCKET 또는 ERROR_SOCKET 이벤트를 단지 기다린다.`
             );
+
+            client.postMessage({
+              action: 'CONFIRM_BAN_CONNECT_SOCKET',
+              value: { id: client.id },
+              from: SERVICE_WORKER_NAME,
+            });
           } else if (otherClientsConnectedSocket.length > 0) {
             console.log(
               `[sw] 이미 소켓 연결이 되어 있는 client ${otherClientsConnectedSocket[0].id} 가 존재하므로, 새 client ${
                 evt.source.id
               } 는 소켓 연결을 하지 않는다.`
             );
+
+            client.postMessage({
+              action: 'CONFIRM_BAN_CONNECT_SOCKET',
+              value: { id: client.id },
+              from: SERVICE_WORKER_NAME,
+            });
           } else {
             console.log(
               '[sw] 소켓 연결중(connecting)이거나 연결되어 있는(connected) client 가 존재하지 않으므로, 소켓 연결을 요청한 client 에 소켓 연결을 시도한다.'
@@ -181,6 +196,7 @@ self.addEventListener('message', evt => {
 
             client.postMessage({
               action: 'CONFIRM_CAN_CONNECT_SOCKET',
+              value: { id: client.id },
               from: SERVICE_WORKER_NAME,
             });
           }
@@ -188,7 +204,7 @@ self.addEventListener('message', evt => {
           console.log('[sw] clientInfos :', clientInfos);
 
           // + 멀티 clients 소켓 연결 관리를 위한 테스트 케이스
-          // 첫번째 client(1) 열린 후에 소켓 연결 이후,
+          // 첫번째 client(1) 열린 후에 소켓 연결 이후
 
           // 1. 새 client(2) 열기
           // 1-1. 소켓 연결 상태의 client(1) 가 존재하므로, client(2) 에 소켓 연결이 되지 않아야 한다.
@@ -236,7 +252,7 @@ self.addEventListener('message', evt => {
         clientObj.isConnectedSocket = false;
       }
 
-      const hasClientRelatedSocket =
+      hasClientRelatedSocket =
         Object.values(clientInfos).filter(obj => obj.isConnectingSocket === true || obj.isConnectedSocket === true)
           .length > 0;
       if (!hasClientRelatedSocket) {
@@ -254,7 +270,7 @@ self.addEventListener('message', evt => {
         clientObj.isConnectedSocket = false;
       }
 
-      const hasClientRelatedSocket =
+      hasClientRelatedSocket =
         Object.values(clientInfos).filter(obj => obj.isConnectingSocket === true || obj.isConnectedSocket === true)
           .length > 0;
       if (!hasClientRelatedSocket) {
@@ -290,6 +306,7 @@ self.addEventListener('message', evt => {
 
                   client.postMessage({
                     action: 'SHOULD_CONNECT_SOCKET',
+                    value: { id: clientInfo.id },
                     from: SERVICE_WORKER_NAME,
                   });
                 })
@@ -299,10 +316,7 @@ self.addEventListener('message', evt => {
                   console.log('[sw] rejected. clientInfos :', clientInfos);
 
                   console.log(
-                    '[sw] 소켓 연결중 or 연결되어 있던 client close 후, 새로운 client 에 소켓 연결 시도 실패.'
-                  );
-                  console.log(
-                    '[sw] 소켓 연결중 or 연결되어 있는 client 는 없다. TODO: 사용자를 위한 안내 및 소켓 재접속 UI 표기 필요.'
+                    '[sw] 소켓 연결중 or 연결되어 있던 client close 후, 새롭게 소켓을 연결할 client 찾기 실패'
                   );
                 });
             } else {
@@ -322,6 +336,23 @@ self.addEventListener('message', evt => {
         }
       }
       break;
+
+    /*
+    case 'REQUIRE_CLIENT_INFOS_FOR_SKIP_WAITING':
+      console.log('[sw] REQUIRE_CLIENT_INFOS_FOR_SKIP_WAITING : ', clientInfos);
+
+      postAllClients(_clients => {
+        const clientIds = _clients.map(c => c.id);
+        syncClientInfos(clientIds);
+
+        client.postMessage({
+          action: 'SEND_CLIENT_INFOS_FOR_SKIP_WAITING',
+          value: clientInfos,
+          from: SERVICE_WORKER_NAME,
+        });
+      });
+      break;
+    */
 
     case 'REQUIRE_SKIP_WAITING':
       console.group('+ [sw] ✉️ REQUIRE_SKIP_WAITING');

@@ -47,6 +47,12 @@
       ]
     }
   },
+  "nodemonConfig": {
+    "ignore": [
+      "serviceworker.js",
+      "src/*"
+    ]
+  },
   "dependencies": {
     "electron-squirrel-startup": "^1.0.0",
     "nodemon": "^1.19.1",
