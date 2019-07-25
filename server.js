@@ -14,12 +14,15 @@ wss.on('connection', ws => {
 
     const obj = JSON.parse(message);
     switch (obj.action) {
-      case 'REQUEST_SOCKET_MESSAGE':
+      case 'REQUEST_SEND_SOCKET_MESSAGE':
         // send message from socket server to client
         const data = JSON.stringify({
-          value: `This is a dummy message from socket server`,
+          action: 'SEND_FROM_SOCKET_SERVER',
+          value: {
+            title: `This is a dummy message from socket server`,
+            createdAt: new Date().getTime(),
+          },
           from: 'server',
-          createdAt: new Date().getTime(),
         });
 
         wss.clients.forEach(client => {

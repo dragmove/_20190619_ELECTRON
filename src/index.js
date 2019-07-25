@@ -109,12 +109,6 @@ if (isSupportServiceWorker) {
     if (!data) return;
 
     switch (data.action) {
-      case 'UPDATE_CLIENT_INFOS':
-        console.log('[app] "UPDATE_CLIENT_INFOS" : 모든 client 에게 전달');
-        clientInfos = data.value.clientInfos;
-        console.log('[app] UPDATE_CLIENT_INFOS - clientInfos :', clientInfos);
-        break;
-
       case 'CONFIRM_BAN_CONNECT_SOCKET':
         console.log('[app] "CONFIRM_BAN_CONNECT_SOCKET" : 소켓 연결 비허용');
         clientId = data.value.id;
@@ -138,26 +132,24 @@ if (isSupportServiceWorker) {
         connectWebSocket();
         break;
 
-      /*
-      case 'SEND_CLIENT_INFOS_FOR_SKIP_WAITING':
-        console.log('[app] SEND_CLIENT_INFOS_FOR_SKIP_WAITING');
-        console.log('data.value :', data.value);
-
-        // TODO: 이걸 waiting 서비스워커로 전달을 해줘야 한다.
+      case 'UPDATE_CLIENT_INFOS': // received by all clients
+        console.log('[app] "UPDATE_CLIENT_INFOS" : 모든 client 에게 전달');
+        clientInfos = data.value.clientInfos;
+        console.log('[app] UPDATE_CLIENT_INFOS - clientInfos :', clientInfos);
         break;
-      */
 
-      case 'SKIP_WAITING_COMPLETE':
-        console.log('[app] 서비스워커로부터 SKIP_WAITING_COMPLETE action을 받았다.');
+      case 'COMPLETE_SKIP_WAITING_NEW_SERVICE_WORKER': // received by all clients
+        console.log('[app] 서비스워커로부터 COMPLETE_SKIP_WAITING_NEW_SERVICE_WORKER action을 받았다');
         console.log('[app] 새로운 서비스워커를 사용할 수 있게 되었다.');
 
         hideElement(skipWaitingBtn);
+        break;
 
-        // TODO: 이걸 socket 이 연결되어 있는 페이지, 연결 안 되어 있는 페이지, 새로 연 페이지에서 실행하여 테스트할 것.
-
-        // TODO: 서비스워커만 업데이트되어 skip waiting 시도하여 완료되었을 경우
-        // close previous socket, and reconnect new socket.
-        // connectWebSocket();
+      case 'SEND_FROM_SW_CLIENT_SERVER':
+        console.log(
+          '[app] 소켓 서버 => 소켓 연결된 클라이언트 => 서비스워커 => 모든 클라이언트로 전달된 SEND_FROM_SW_CLIENT_SERVER action을 받았다. :',
+          data.value
+        );
         break;
     }
   });
@@ -225,14 +217,22 @@ function init() {
 
       ws.send(
         JSON.stringify({
-          action: 'REQUEST_SOCKET_MESSAGE',
-          value: `hello! I'm client.`,
+          action: 'REQUEST_SEND_SOCKET_MESSAGE',
           from: 'client',
           createdAt: new Date().getTime(),
         })
       );
     };
   }
+
+  window.onbeforeunload = function(evt) {
+    if (!navigator.serviceWorker.controller) return;
+    navigator.serviceWorker.controller.postMessage({
+      action: 'CLOSED_CLIENT',
+      value: { isIndexPage },
+      from: 'client',
+    });
+  };
 }
 
 function onNewServiceWorker(registration, callback) {
@@ -244,7 +244,7 @@ function onNewServiceWorker(registration, callback) {
 
   if (waiting) {
     console.log(
-      '[app] 새 서비스워커가 activate 되기를 기다리고 있다. 여러 개의 client 들이 열려 있고, client 들 중 하나가 새로고침된다면 발생할 수 있다.'
+      '[app] 새 서비스워커가 activate 되기를 기다리고 있다. 여러 개의 client 중 하나가 새로고침되거나 새로운 client 가 열리면 발생할 수 있다.'
     );
 
     return callback.call(null);
@@ -286,16 +286,6 @@ function setSkipWaitingBtn(registration) {
   skipWaitingBtn.onclick = evt => {
     evt.preventDefault();
 
-    console.log('registration :', registration);
-
-    // TODO: waiting 서비스워커의 skipWaiting 이 필요한데,
-    // 문제는 이 녀석이 기존의 서비스워커가 가지고 있던 clientsInfoObj 정보를 가지고 있지 않다는 것이다.
-    // registration.active 은 현재 clientsInfoObj 정보를 가지고 있고,
-    // registration.waiting 은 현재 초기화 상태이며, 아무 정보도 가지고 있지 않다.
-
-    // waiting 서비스워커측으로 REQUIRE_SKIP_WAITING 요청하여 완료되었을 경우,
-    // 모든 client 로부터 현재 각자의 socket 연결 여부를 전달 받도록 하여 clientObj 를 갱신하면 될까? 'ㅅ')?
-
     const waitingServiceWorker = registration.waiting,
       activeServiceWorker = registration.active;
     if (!waitingServiceWorker || !activeServiceWorker) {
@@ -303,24 +293,11 @@ function setSkipWaitingBtn(registration) {
       return;
     }
 
-    // TODO: 아래의 시나리오가 가능한 것인지 타진 필요 'ㅅ')/
-    // 모든 페이지의 정보가 담긴 clientInfos 를 이슈가 있을 때마다 전달 받아 index.js 에서도 들고 있다가
-    // 이것을 waiting 서비스워커로 넘겨 주면서, skipWaiting 을 발생시키고 곧바로 active 상태가 된 서비스워커의 clientInfos 에 넣는다.
-
-    /*
-    activeServiceWorker.postMessage({
-      action: 'REQUIRE_CLIENT_INFOS_FOR_SKIP_WAITING',
-      from: 'client',
-    });
-    */
-
-    /*
     waitingServiceWorker.postMessage({
       action: 'REQUIRE_SKIP_WAITING',
+      value: { clientInfos },
       from: 'client',
     });
-    */
-    // => 서비스워커의 self.skipWaiting() 실행 완료 후, 서비스워커 측에서 'skipWaitingComplete' action 을 postMessage 로 전달할 것이다.
   };
 }
 
@@ -383,13 +360,17 @@ function connectWebSocket() {
     console.log('[client socket] onmessage');
 
     const data = evt && evt.data ? JSON.parse(evt.data) : null;
-    console.log('[client socket] message from socket server :', data);
+    console.log('[client socket] dummy message from socket server :', data);
 
-    navigator.serviceWorker.controller.postMessage({
-      action: 'FROM_SOCKET_SERVER',
-      value: data.value,
-      from: 'client',
-    });
+    switch (data.action) {
+      case 'SEND_FROM_SOCKET_SERVER':
+        navigator.serviceWorker.controller.postMessage({
+          action: 'SEND_FROM_SOCKET_CLIENT_SERVER',
+          value: data.value,
+          from: 'client',
+        });
+        break;
+    }
   };
 
   /*
@@ -439,13 +420,3 @@ function connectWebSocket() {
   };
   */
 }
-
-window.onbeforeunload = function(evt) {
-  if (!navigator.serviceWorker.controller) return;
-
-  navigator.serviceWorker.controller.postMessage({
-    action: 'CLOSED_CLIENT',
-    value: { isIndexPage },
-    from: 'client',
-  });
-};

@@ -44,6 +44,7 @@ function broadcastMessageToAllClients(clients, action, value) {
 //
 // + implementation
 //
+
 // https://developer.mozilla.org/en-US/docs/Web/API/ServiceWorkerGlobalScope/oninstall
 self.addEventListener('install', evt => {
   console.log('[sw] install event. service worker installed. evt :', evt);
@@ -354,83 +355,24 @@ self.addEventListener('message', evt => {
       }
       break;
 
-    /*
-    case 'REQUIRE_CLIENT_INFOS_FOR_SKIP_WAITING':
-      console.log('[sw] REQUIRE_CLIENT_INFOS_FOR_SKIP_WAITING : ', clientInfos);
-
-      getAllClients(_clients => {
-        const clientIds = _clients.map(c => c.id);
-        syncClientInfos(clientIds);
-
-        client.postMessage({
-          action: 'SEND_CLIENT_INFOS_FOR_SKIP_WAITING',
-          value: clientInfos,
-          from: SERVICE_WORKER_NAME,
-        });
-      });
-      break;
-    */
-
     case 'REQUIRE_SKIP_WAITING':
       console.group('+ [sw] ✉️ REQUIRE_SKIP_WAITING');
-      console.log('[sw] before skipWaiting clientInfos :', JSON.stringify(clientInfos));
+      console.log('REQUIRE_SKIP_WAITING - data.value :', data.value);
 
-      /*
-      self
-        .skipWaiting()
-        .then(() => {
-          console.log('[sw] resolve skipWaiting() promise');
+      self.skipWaiting().then(() => {
+        console.log('[sw] resolve skipWaiting() promise');
 
-          getAllClients(clients => {
-            console.log(
-              `[sw] 모든 client 들에게 'skipWaitingComplete' action을 postMessage로 전달한다. clients :`,
-              clients
-            );
+        clientInfos = data.value.clientInfos;
 
-            console.log('[sw] after skipWaiting clientInfos :', JSON.stringify(clientInfos));
+        getAllClients(_clients => {
+          syncClientInfos(getClientIds(_clients));
 
-            // 모든 client 들에게 skipWaiting 이 성공했음을 전달한다.
-            clients.forEach(client => {
-              client.postMessage({ action: 'SKIP_WAITING_COMPLETE', from: SERVICE_WORKER_NAME });
-            });
-
-            // TODO: 소켓에 연결되어 있던 client 를 찾아서 이 녀석에게만 어떠한 일을 해주어야 할까? 'ㅅ')?
-          });
-        })
-        .catch(error => {
-          // TODO: 새로운 서비스워커를 skip waiting 하는 과정에서 error 가 발생한다면 어떻게 해야 하는가?
+          broadcastMessageToAllClients(_clients, 'UPDATE_CLIENT_INFOS', { clientInfos });
+          broadcastMessageToAllClients(_clients, 'COMPLETE_SKIP_WAITING_NEW_SERVICE_WORKER');
         });
-        */
+      });
       console.groupEnd();
       break;
-
-    /*
-    case 'FROM_SOCKET_SERVER':
-      console.group('+ [sw] ✉️ FROM_SOCKET_SERVER');
-      console.log('[sw] get action:FROM_SOCKET_SERVER. data :', data);
-      console.log(`[sw] 모든 client 들에게 'FROM_SERVICE_WORKER_FROM_SOCKET_SERVER' action을 postMessage로 전달한다`);
-      console.groupEnd();
-
-      // socket 서버 측으로부터, 각각의 index.html 에 연결된 socket 메세지가 전달된다.
-      // focused client 로부터 전달된 메세지가 아닐 경우, 무시하도록 한다.
-
-      // console.log('[sw] client.focused :', client.focused);
-
-      // if (!client.focused) return;
-
-      // getAllClients(clients => {
-      //   clients.forEach(client => {
-      //     client.postMessage({
-      //       action: 'FROM_SERVICE_WORKER_FROM_SOCKET_SERVER',
-      //       value: data.value,
-      //       clientId: client.id,
-      //       from: SERVICE_WORKER_NAME,
-      //     });
-      //   });
-      // });
-
-      break;
-      */
 
     case 'PRINT_CLIENTS_NUM':
       console.group('+ [sw] ✉️ PRINT_CLIENTS_NUM');
@@ -439,28 +381,15 @@ self.addEventListener('message', evt => {
       });
       console.groupEnd();
       break;
-  }
 
-  /*
-  // message를 전달한 한 client에게 message를 전달한다.
-  this.self.clients.get(evt.source.id).then(client => {
-    client.postMessage({
-      value: `client.id from clients.get(evt.source.id): ${evt.source.id}`,
-      from: SERVICE_WORKER_NAME,
-    });
-  });
-  */
+    case 'SEND_FROM_SOCKET_CLIENT_SERVER':
+      console.log('+ [sw] ✉️ SEND_FROM_SOCKET_CLIENT_SERVER');
 
-  /*
-  // 모든 client들에게 message를 전달한다.
-  self.clients.matchAll().then(clients => {
-    clients.forEach(client => {
-      // console.log('[sw] client.id :', client.id);
-      client.postMessage({
-        value: `your client.id is ${client.id}.`,
-        from: SERVICE_WORKER_NAME,
+      getAllClients(_clients => {
+        broadcastMessageToAllClients(_clients, 'SEND_FROM_SW_CLIENT_SERVER', {
+          value: data.value,
+        });
       });
-    });
-  });
-  */
+      break;
+  }
 });
