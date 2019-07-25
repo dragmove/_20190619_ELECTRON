@@ -3,6 +3,7 @@ import { isSupportServiceWorker, isSupportWebSocket } from './utils';
 // + Reference
 // https://developers.google.com/web/fundamentals/primers/service-workers/lifecycle#%EC%88%98%EB%8F%99_%EC%97%85%EB%8D%B0%EC%9D%B4%ED%8A%B8
 
+const CLIENT_IDENTIFIER = 'serviceworker';
 const isIndexPage = window.isIndex; // window.isIndex 라면 index.html 페이지
 
 let clientId = null;
@@ -62,7 +63,11 @@ if (isSupportServiceWorker) {
             '[app] active, waiting 상태의 서비스워커가 존재하는 것이 확인될 경우, waiting 상태의 서비스워커로 업데이트'
           );
           if (activeWorker.state === 'activated' && waitingWorker.state === 'installed')
-            waitingWorker.postMessage({ action: 'skipWaiting', from: 'client' });
+            waitingWorker.postMessage({
+              action: 'REQUIRE_SKIP_WAITING',
+              value: { clientInfos },
+              from: CLIENT_IDENTIFIER,
+            });
         }
 
         return;
@@ -72,7 +77,7 @@ if (isSupportServiceWorker) {
         // TODO: Check
         // if (activeWorker && waitingWorker) {
         //   console.log('[app] active, waiting 상태의 서비스워커가 존재하는 것이 확인될 경우, waiting 상태의 서비스워커로 업데이트');
-        //   if (activeWorker.state === 'activated' && waitingWorker.state === 'installed') waitingWorker.postMessage({ action: 'skipWaiting', from: 'client' });
+        //   if (activeWorker.state === 'activated' && waitingWorker.state === 'installed') waitingWorker.postMessage({ action: 'REQUIRE_SKIP_WAITING', value: { clientInfos }, from: CLIENT_IDENTIFIER });
         // }
 
         // message를 action data와 함께 MessageChannel의 port로 전달한다.
@@ -80,7 +85,7 @@ if (isSupportServiceWorker) {
           navigator.serviceWorker.controller.postMessage({
             action: 'REQUIRE_CONNECT_SOCKET',
             value: { isIndexPage },
-            from: 'client',
+            from: CLIENT_IDENTIFIER,
           });
         } else {
           window.alert('[app] 이 브라우저는 웹 소켓을 지원하지 않는다.');
@@ -113,13 +118,13 @@ if (isSupportServiceWorker) {
         console.log('[app] "CONFIRM_BAN_CONNECT_SOCKET" : 소켓 연결 비허용');
         clientId = data.value.id;
 
-        console.log('clientId :', clientId);
+        console.log('[app] clientId :', clientId);
         break;
 
       case 'CONFIRM_CAN_CONNECT_SOCKET':
         console.log('[app] "CONFIRM_CAN_CONNECT_SOCKET" : 소켓 연결 허용');
         clientId = data.value.id;
-        console.log('clientId :', clientId);
+        console.log('[app] clientId :', clientId);
 
         connectWebSocket();
         break;
@@ -127,7 +132,7 @@ if (isSupportServiceWorker) {
       case 'SHOULD_CONNECT_SOCKET':
         console.log('[app] 서비스워커로부터 SHOULD_CONNECT_SOCKET action을 받았다');
         clientId = data.value.id;
-        console.log('clientId :', clientId);
+        console.log('[app] clientId :', clientId);
 
         connectWebSocket();
         break;
@@ -180,7 +185,7 @@ function init() {
       navigator.serviceWorker.controller.postMessage({
         action: 'PRINT_CLIENTS_NUM',
         value: { isIndexPage },
-        from: 'client',
+        from: CLIENT_IDENTIFIER,
       });
     };
   }
@@ -218,7 +223,7 @@ function init() {
       ws.send(
         JSON.stringify({
           action: 'REQUEST_SEND_SOCKET_MESSAGE',
-          from: 'client',
+          from: CLIENT_IDENTIFIER,
           createdAt: new Date().getTime(),
         })
       );
@@ -230,7 +235,7 @@ function init() {
     navigator.serviceWorker.controller.postMessage({
       action: 'CLOSED_CLIENT',
       value: { isIndexPage },
-      from: 'client',
+      from: CLIENT_IDENTIFIER,
     });
   };
 }
@@ -272,13 +277,15 @@ function onNewServiceWorker(registration, callback) {
         callback.call(null);
       }
 
-      // if (evt.target.state === 'activated') { console.log('[app] 새로운 서비스워커가 activated 되었다. serviceworker.controller가 변경되었다.'); }
+      if (evt.target.state === 'activated') {
+        console.log('[app] 새로운 서비스워커가 activated 되었다. serviceworker.controller가 변경되었다.');
+      }
     };
   }
 }
 
 function setSkipWaitingBtn(registration) {
-  console.log('setSkipWaitingBtn');
+  console.log('[app] setSkipWaitingBtn() called');
   if (!skipWaitingBtn) return;
 
   showElement(skipWaitingBtn);
@@ -296,7 +303,7 @@ function setSkipWaitingBtn(registration) {
     waitingServiceWorker.postMessage({
       action: 'REQUIRE_SKIP_WAITING',
       value: { clientInfos },
-      from: 'client',
+      from: CLIENT_IDENTIFIER,
     });
   };
 }
@@ -325,49 +332,49 @@ function connectWebSocket() {
   ws = new WebSocket('ws://localhost:9002'); // 'ws://echo.websocket.org/'
 
   ws.onopen = evt => {
-    console.log('[client socket] open a socket connection :', evt);
+    console.log('[client-socket] open a socket connection :', evt);
 
     navigator.serviceWorker.controller.postMessage({
       action: 'OPENED_SOCKET',
-      from: 'client',
+      from: CLIENT_IDENTIFIER,
     });
   };
 
   ws.onerror = error => {
-    console.log('[client socket] error :', error);
-    window.alert('[client socket] socket 연결을 할 수 없습니다.');
+    console.log('[client-socket] error :', error);
+    window.alert('[client-socket] socket 연결을 할 수 없습니다.');
 
     // socket 연결 시도 도중, 에러가 발생하는 경우
     navigator.serviceWorker.controller.postMessage({
       action: 'ERROR_SOCKET',
-      from: 'client',
+      from: CLIENT_IDENTIFIER,
     });
   };
 
   ws.onclose = evt => {
-    console.log('[client socket] close');
+    console.log('[client-socket] close');
 
     // socket 연결 이후 정상 작동 중, socket 측 이상으로 connection close
     navigator.serviceWorker.controller.postMessage({
       action: 'CLOSED_SOCKET',
-      from: 'client',
+      from: CLIENT_IDENTIFIER,
     });
 
     // destroyBufferInterval();
   };
 
   ws.onmessage = evt => {
-    console.log('[client socket] onmessage');
+    console.log('[client-socket] onmessage');
 
     const data = evt && evt.data ? JSON.parse(evt.data) : null;
-    console.log('[client socket] dummy message from socket server :', data);
+    console.log('[client-socket] dummy message from socket server :', data);
 
     switch (data.action) {
       case 'SEND_FROM_SOCKET_SERVER':
         navigator.serviceWorker.controller.postMessage({
           action: 'SEND_FROM_SOCKET_CLIENT_SERVER',
           value: data.value,
-          from: 'client',
+          from: CLIENT_IDENTIFIER,
         });
         break;
     }
@@ -387,9 +394,9 @@ function connectWebSocket() {
     const messeagesToFlush = messagesBuffer.splice(0, NUM_MESSAGES_PER_FLUSH);
 
     navigator.serviceWorker.controller.postMessage({
-      action: 'fromWebSocket',
+      action: 'FLUSH_MESSAGES',
       value: messeagesToFlush,
-      from: 'client',
+      from: CLIENT_IDENTIFIER,
     });
 
     if (messagesBuffer.length > 0) {

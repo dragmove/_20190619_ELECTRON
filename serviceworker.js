@@ -1,4 +1,4 @@
-const SERVICE_WORKER_NAME = 'serviceworker';
+const SERVICE_WORKER_IDENTIFIER = 'serviceworker';
 
 let clientInfos = {};
 
@@ -34,11 +34,11 @@ function getClientIds(clients = []) {
 }
 
 function postMessageToClient(client, action, value) {
-  client && client.postMessage({ action, value, from: SERVICE_WORKER_NAME });
+  client && client.postMessage({ action, value, from: SERVICE_WORKER_IDENTIFIER });
 }
 
 function broadcastMessageToAllClients(clients, action, value) {
-  clients.forEach(client => client && client.postMessage({ action, value, from: SERVICE_WORKER_NAME }));
+  clients.forEach(client => client && client.postMessage({ action, value, from: SERVICE_WORKER_IDENTIFIER }));
 }
 
 //
