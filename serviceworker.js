@@ -25,8 +25,20 @@ function syncClientInfos(clientIds = []) {
   }
 }
 
-function postAllClients(resolveCallback) {
+function getAllClients(resolveCallback) {
   self.clients.matchAll().then(resolveCallback);
+}
+
+function getClientIds(clients = []) {
+  return clients.map(client => client && client.id);
+}
+
+function postMessageToClient(client, action, value) {
+  client && client.postMessage({ action, value, from: SERVICE_WORKER_NAME });
+}
+
+function broadcastMessageToAllClients(clients, action, value) {
+  clients.forEach(client => client && client.postMessage({ action, value, from: SERVICE_WORKER_NAME }));
 }
 
 //
@@ -45,7 +57,7 @@ self.addEventListener('install', evt => {
     console.log('[sw] 새 서비스워커 설치 후, resolve skipWaiting() promise');
 
     // 이 단계에서는 client들의 확인은 불가하다.
-    postAllClients(clients => {
+    getAllClients(clients => {
       console.log(
         `[sw] 새 서비스워커가 install되면, 자동으로 skipWaiting 실행 후 clients 갯수 확인 시도한다. clients :`,
         clients
@@ -138,26 +150,19 @@ self.addEventListener('message', evt => {
       }
       clientObj = clientInfos[client.id];
 
-      postAllClients(_clients => {
-        const clientIds = _clients.map(c => c.id);
+      getAllClients(_clients => {
+        syncClientInfos(getClientIds(_clients));
 
         if (_clients.length <= 1) {
           // one client
           console.log(`[sw] 새 client ${evt.source.id} 의 소켓 연결을 허용한다.`);
 
-          syncClientInfos(clientIds);
-
           clientObj.isConnectingSocket = true;
 
-          client.postMessage({
-            action: 'CONFIRM_CAN_CONNECT_SOCKET',
-            value: { id: client.id },
-            from: SERVICE_WORKER_NAME,
-          });
+          postMessageToClient(client, 'CONFIRM_CAN_CONNECT_SOCKET', { id: client.id });
+          broadcastMessageToAllClients(_clients, 'UPDATE_CLIENT_INFOS', { clientInfos });
         } else {
           // multi clients
-          syncClientInfos(clientIds);
-
           const otherClientsConnectingSocket = Object.values(clientInfos).filter(
               obj => obj.id !== client.id && obj.isConnectingSocket === true
             ),
@@ -171,11 +176,8 @@ self.addEventListener('message', evt => {
               소켓 연결 중인 client 의 연결이 성공적으로 이루어지지 않는지, OPENED_SOCKET 또는 ERROR_SOCKET 이벤트를 단지 기다린다.`
             );
 
-            client.postMessage({
-              action: 'CONFIRM_BAN_CONNECT_SOCKET',
-              value: { id: client.id },
-              from: SERVICE_WORKER_NAME,
-            });
+            postMessageToClient(client, 'CONFIRM_BAN_CONNECT_SOCKET', { id: client.id });
+            broadcastMessageToAllClients(_clients, 'UPDATE_CLIENT_INFOS', { clientInfos });
           } else if (otherClientsConnectedSocket.length > 0) {
             console.log(
               `[sw] 이미 소켓 연결이 되어 있는 client ${otherClientsConnectedSocket[0].id} 가 존재하므로, 새 client ${
@@ -183,22 +185,16 @@ self.addEventListener('message', evt => {
               } 는 소켓 연결을 하지 않는다.`
             );
 
-            client.postMessage({
-              action: 'CONFIRM_BAN_CONNECT_SOCKET',
-              value: { id: client.id },
-              from: SERVICE_WORKER_NAME,
-            });
+            postMessageToClient(client, 'CONFIRM_BAN_CONNECT_SOCKET', { id: client.id });
+            broadcastMessageToAllClients(_clients, 'UPDATE_CLIENT_INFOS', { clientInfos });
           } else {
             console.log(
               '[sw] 소켓 연결중(connecting)이거나 연결되어 있는(connected) client 가 존재하지 않으므로, 소켓 연결을 요청한 client 에 소켓 연결을 시도한다.'
             );
             clientObj.isConnectingSocket = true;
 
-            client.postMessage({
-              action: 'CONFIRM_CAN_CONNECT_SOCKET',
-              value: { id: client.id },
-              from: SERVICE_WORKER_NAME,
-            });
+            postMessageToClient(client, 'CONFIRM_CAN_CONNECT_SOCKET', { id: client.id });
+            broadcastMessageToAllClients(_clients, 'UPDATE_CLIENT_INFOS', { clientInfos });
           }
 
           console.log('[sw] clientInfos :', clientInfos);
@@ -240,6 +236,11 @@ self.addEventListener('message', evt => {
         clientObj.isConnectingSocket = false;
         clientObj.isConnectedSocket = true;
       }
+
+      getAllClients(_clients => {
+        syncClientInfos(getClientIds(_clients));
+        broadcastMessageToAllClients(_clients, 'UPDATE_CLIENT_INFOS', { clientInfos });
+      });
       break;
 
     case 'ERROR_SOCKET':
@@ -260,6 +261,11 @@ self.addEventListener('message', evt => {
           '[sw] 소켓 연결중 or 연결되어 있는 client 는 없다. TODO: 사용자를 위한 안내 및 소켓 재접속 UI 표기 필요.'
         );
       }
+
+      getAllClients(_clients => {
+        syncClientInfos(getClientIds(_clients));
+        broadcastMessageToAllClients(_clients, 'UPDATE_CLIENT_INFOS', { clientInfos });
+      });
       break;
 
     case 'CLOSED_SOCKET':
@@ -278,6 +284,11 @@ self.addEventListener('message', evt => {
           '[sw] 소켓 연결중 or 연결되어 있는 client 는 없다. TODO: 사용자를 위한 안내 및 소켓 재접속 UI 표기 필요.'
         );
       }
+
+      getAllClients(_clients => {
+        syncClientInfos(getClientIds(_clients));
+        broadcastMessageToAllClients(_clients, 'UPDATE_CLIENT_INFOS', { clientInfos });
+      });
       break;
 
     case 'CLOSED_CLIENT':
@@ -304,10 +315,11 @@ self.addEventListener('message', evt => {
                   clientInfo.isConnectedSocket = false;
                   console.log('[sw] resolved. clientInfos :', clientInfos);
 
-                  client.postMessage({
-                    action: 'SHOULD_CONNECT_SOCKET',
-                    value: { id: clientInfo.id },
-                    from: SERVICE_WORKER_NAME,
+                  postMessageToClient(client, 'SHOULD_CONNECT_SOCKET', { id: clientInfo.id, clientInfos });
+
+                  getAllClients(_clients => {
+                    syncClientInfos(getClientIds(_clients));
+                    broadcastMessageToAllClients(_clients, 'UPDATE_CLIENT_INFOS', { clientInfos });
                   });
                 })
                 .catch(error => {
@@ -329,6 +341,11 @@ self.addEventListener('message', evt => {
             delete clientInfos[client.id];
 
             console.log('[sw] clientInfos :', clientInfos);
+
+            getAllClients(_clients => {
+              syncClientInfos(getClientIds(_clients));
+              broadcastMessageToAllClients(_clients, 'UPDATE_CLIENT_INFOS', { clientInfos });
+            });
           }
         } else {
           // TODO: // in popup
@@ -341,7 +358,7 @@ self.addEventListener('message', evt => {
     case 'REQUIRE_CLIENT_INFOS_FOR_SKIP_WAITING':
       console.log('[sw] REQUIRE_CLIENT_INFOS_FOR_SKIP_WAITING : ', clientInfos);
 
-      postAllClients(_clients => {
+      getAllClients(_clients => {
         const clientIds = _clients.map(c => c.id);
         syncClientInfos(clientIds);
 
@@ -364,7 +381,7 @@ self.addEventListener('message', evt => {
         .then(() => {
           console.log('[sw] resolve skipWaiting() promise');
 
-          postAllClients(clients => {
+          getAllClients(clients => {
             console.log(
               `[sw] 모든 client 들에게 'skipWaitingComplete' action을 postMessage로 전달한다. clients :`,
               clients
@@ -401,7 +418,7 @@ self.addEventListener('message', evt => {
 
       // if (!client.focused) return;
 
-      // postAllClients(clients => {
+      // getAllClients(clients => {
       //   clients.forEach(client => {
       //     client.postMessage({
       //       action: 'FROM_SERVICE_WORKER_FROM_SOCKET_SERVER',
@@ -417,7 +434,7 @@ self.addEventListener('message', evt => {
 
     case 'PRINT_CLIENTS_NUM':
       console.group('+ [sw] ✉️ PRINT_CLIENTS_NUM');
-      postAllClients(_clients => {
+      getAllClients(_clients => {
         console.log('[sw] clients :', _clients);
       });
       console.groupEnd();

@@ -6,6 +6,7 @@ import { isSupportServiceWorker, isSupportWebSocket } from './utils';
 const isIndexPage = window.isIndex; // window.isIndex 라면 index.html 페이지
 
 let clientId = null;
+let clientInfos = null;
 
 let ws;
 let postMessageBtn, openWindowBtn, skipWaitingBtn, refreshBtn, requestSocketMessageBtn;
@@ -18,10 +19,10 @@ if (isSupportServiceWorker) {
     .then(registration => {
       console.log('[app] service worker registered. registration :', registration);
 
-      const { active, installing, waiting } = registration;
-      console.log('[app] register.then. active service worker :', active);
-      console.log('[app] register.then. installing service worker :', installing);
-      console.log('[app] register.then. waiting service worker :', waiting);
+      const { active: activeWorker, installing: installingWorker, waiting: waitingWorker } = registration;
+      console.log('[app] register.then. active service worker :', activeWorker);
+      console.log('[app] register.then. installing service worker :', installingWorker);
+      console.log('[app] register.then. waiting service worker :', waitingWorker);
       console.log('[app] register.then. current activated service worker :', navigator.serviceWorker.controller);
 
       // installing 서비스워커의 상태 변화를 감지할 수 있다.
@@ -38,8 +39,7 @@ if (isSupportServiceWorker) {
         registration.addEventListener('updatefound', () => {
           console.log('[app] registration.onupdatefound event. 첫번째 서비스워커가 updating 중이다.');
 
-          const installingServiceWorker = registration.installing;
-          installingServiceWorker.onstatechange = evt => {
+          registration.installing.onstatechange = evt => {
             console.log('[app] installingServiceWorker.onstatechange. 첫번째 서비스워커의 상태 :', evt.target.state); // 'installed' => 'activating' => 'activated'
 
             if (evt.target.state === 'activated') {
@@ -53,16 +53,16 @@ if (isSupportServiceWorker) {
           };
         });
 
-        if (active && !installing && !waiting) {
+        if (activeWorker && !installingWorker && !waitingWorker) {
           // console.log('TODO: Check');
         }
 
-        if (active && waiting) {
+        if (activeWorker && waitingWorker) {
           console.log(
             '[app] active, waiting 상태의 서비스워커가 존재하는 것이 확인될 경우, waiting 상태의 서비스워커로 업데이트'
           );
-          if (active.state === 'activated' && waiting.state === 'installed')
-            waiting.postMessage({ action: 'skipWaiting', from: 'client' });
+          if (activeWorker.state === 'activated' && waitingWorker.state === 'installed')
+            waitingWorker.postMessage({ action: 'skipWaiting', from: 'client' });
         }
 
         return;
@@ -70,18 +70,16 @@ if (isSupportServiceWorker) {
         console.log('[app] navigator.serviceWorker.controller가 존재한다.');
 
         // TODO: Check
-        // if (active && waiting) {
+        // if (activeWorker && waitingWorker) {
         //   console.log('[app] active, waiting 상태의 서비스워커가 존재하는 것이 확인될 경우, waiting 상태의 서비스워커로 업데이트');
-        //   if (active.state === 'activated' && waiting.state === 'installed') waiting.postMessage({ action: 'skipWaiting', from: 'client' });
+        //   if (activeWorker.state === 'activated' && waitingWorker.state === 'installed') waitingWorker.postMessage({ action: 'skipWaiting', from: 'client' });
         // }
 
         // message를 action data와 함께 MessageChannel의 port로 전달한다.
         if (isSupportWebSocket) {
           navigator.serviceWorker.controller.postMessage({
             action: 'REQUIRE_CONNECT_SOCKET',
-            value: {
-              isIndexPage,
-            },
+            value: { isIndexPage },
             from: 'client',
           });
         } else {
@@ -111,9 +109,16 @@ if (isSupportServiceWorker) {
     if (!data) return;
 
     switch (data.action) {
+      case 'UPDATE_CLIENT_INFOS':
+        console.log('[app] "UPDATE_CLIENT_INFOS" : 모든 client 에게 전달');
+        clientInfos = data.value.clientInfos;
+        console.log('[app] UPDATE_CLIENT_INFOS - clientInfos :', clientInfos);
+        break;
+
       case 'CONFIRM_BAN_CONNECT_SOCKET':
         console.log('[app] "CONFIRM_BAN_CONNECT_SOCKET" : 소켓 연결 비허용');
         clientId = data.value.id;
+
         console.log('clientId :', clientId);
         break;
 
