@@ -126,7 +126,7 @@ if (isSupportServiceWorker) {
         clientId = data.value.id;
         console.log('[app] clientId :', clientId);
 
-        connectWebSocket();
+        if (isIndexPage) connectWebSocket();
         break;
 
       case 'SHOULD_CONNECT_SOCKET':
@@ -134,7 +134,7 @@ if (isSupportServiceWorker) {
         clientId = data.value.id;
         console.log('[app] clientId :', clientId);
 
-        connectWebSocket();
+        if (isIndexPage) connectWebSocket();
         break;
 
       case 'UPDATE_CLIENT_INFOS': // received by all clients
@@ -195,7 +195,7 @@ function init() {
     openWindowBtn.onclick = evt => {
       evt.preventDefault();
       const tmpWindowId = Math.floor(Math.random() * 10000000);
-      const newWindow = window.open('./popup.html', tmpWindowId, 'width=800,height=600;');
+      const newWindow = window.open('./popup.html', tmpWindowId, 'width=640,height=240;');
       console.log('[app] new window 또는 Electron browserWindowProxy 객체 :', newWindow);
     };
   }

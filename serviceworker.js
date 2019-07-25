@@ -150,31 +150,49 @@ self.addEventListener('message', evt => {
         };
       }
       clientObj = clientInfos[client.id];
+      console.log('!!![sw] clientObj :', clientObj);
 
+      if (clientObj.isIndexPage === false) {
+        // popup client
+        console.log(`[sw] client ${client.id} 는 popup client 이므로 소켓 연결 비허용.`);
+
+        postMessageToClient(client, 'CONFIRM_BAN_CONNECT_SOCKET', { id: client.id });
+
+        getAllClients(_clients => {
+          syncClientInfos(getClientIds(_clients));
+          broadcastMessageToAllClients(_clients, 'UPDATE_CLIENT_INFOS', { clientInfos });
+        });
+
+        return;
+      }
+
+      // index client
       getAllClients(_clients => {
         syncClientInfos(getClientIds(_clients));
+        console.log('[sw] _clients :', _clients);
+        console.log('[sw] clientInfos :', clientInfos);
 
         if (_clients.length <= 1) {
-          // one client
-          console.log(`[sw] 새 client ${evt.source.id} 의 소켓 연결을 허용한다.`);
+          // + one index client
+          console.log(`[sw] 새 client ${client.id} 의 소켓 연결을 허용한다.`);
 
           clientObj.isConnectingSocket = true;
 
           postMessageToClient(client, 'CONFIRM_CAN_CONNECT_SOCKET', { id: client.id });
           broadcastMessageToAllClients(_clients, 'UPDATE_CLIENT_INFOS', { clientInfos });
         } else {
-          // multi clients
+          // + multi index clients
           const otherClientsConnectingSocket = Object.values(clientInfos).filter(
-              obj => obj.id !== client.id && obj.isConnectingSocket === true
+              obj => obj.id !== client.id && obj.isIndexPage === true && obj.isConnectingSocket === true
             ),
             otherClientsConnectedSocket = Object.values(clientInfos).filter(
-              obj => obj.id !== client.id && obj.isConnectedSocket === true
+              obj => obj.id !== client.id && obj.isIndexPage === true && obj.isConnectedSocket === true
             );
 
           if (otherClientsConnectingSocket.length > 0) {
             console.log(
               `[sw] 기존 clientS 중 소켓 연결 중인 client 가 존재한다. 새 client 는 소켓 연결할 필요가 없다. 
-              소켓 연결 중인 client 의 연결이 성공적으로 이루어지지 않는지, OPENED_SOCKET 또는 ERROR_SOCKET 이벤트를 단지 기다린다.`
+            소켓 연결 중인 client 의 연결이 성공적으로 이루어지지 않는지, OPENED_SOCKET 또는 ERROR_SOCKET 이벤트를 단지 기다린다.`
             );
 
             postMessageToClient(client, 'CONFIRM_BAN_CONNECT_SOCKET', { id: client.id });
@@ -182,7 +200,7 @@ self.addEventListener('message', evt => {
           } else if (otherClientsConnectedSocket.length > 0) {
             console.log(
               `[sw] 이미 소켓 연결이 되어 있는 client ${otherClientsConnectedSocket[0].id} 가 존재하므로, 새 client ${
-                evt.source.id
+                client.id
               } 는 소켓 연결을 하지 않는다.`
             );
 
@@ -334,7 +352,7 @@ self.addEventListener('message', evt => {
                 });
             } else {
               console.log(
-                '[sw] 소켓 연결중 or 연결되어 있던 client close 후, 소켓 연결할 index page 의 client 가 존재하지 않는다.'
+                `[sw] 소켓 연결중 or 연결되어 있던 client close 후, 소켓 연결할 index page 의 client 가 존재하지 않음. index client 는 모두 닫히고 popup client 만 열려 있을 때도 발생할 수 있음.`
               );
             }
           } else {
@@ -349,8 +367,16 @@ self.addEventListener('message', evt => {
             });
           }
         } else {
-          // TODO: // in popup
-          console.log('[sw] TODO: popup 이 닫혔어요.');
+          console.log('[sw] popup closed');
+
+          delete clientInfos[client.id];
+
+          console.log('[sw] clientInfos :', clientInfos);
+
+          getAllClients(_clients => {
+            syncClientInfos(getClientIds(_clients));
+            broadcastMessageToAllClients(_clients, 'UPDATE_CLIENT_INFOS', { clientInfos });
+          });
         }
       }
       break;
