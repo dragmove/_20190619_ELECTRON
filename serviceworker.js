@@ -41,27 +41,15 @@ function broadcastMessageToAllClients(clients, action, value) {
   clients.forEach(client => client && client.postMessage({ action, value, from: SERVICE_WORKER_IDENTIFIER }));
 }
 
-function fromObjToArr(obj) {
-  let arr = [];
-
-  for (const key in obj) {
-    if (!obj.hasOwnProperty(key)) continue;
-    arr.push(obj[key]);
-  }
-
-  return arr;
-}
-
-//
-// + implementation
-//
-
+/*
+ * implementation
+ */
 // https://developer.mozilla.org/en-US/docs/Web/API/ServiceWorkerGlobalScope/oninstall
 self.addEventListener('install', evt => {
   console.log('[sw] install event. service worker installed. evt :', evt);
 
   /*
-  // This way is not recommended.
+  // + Ref: This way is not recommended.
   // https://developers.google.com/web/fundamentals/primers/service-workers/lifecycle#skip_the_waiting_phase
   // https://bitsofco.de/what-self-skipwaiting-does-to-the-service-worker-lifecycle/
   self.skipWaiting().then(() => {
@@ -78,12 +66,8 @@ self.addEventListener('install', evt => {
   });
   */
 
-  /*
   // 특정 파일들의 caching 이 완료될 때까지 'install' event 의 발생을 지연시킨다.
-  evt.waitUntil(
-    caches.open('gih-cache').then(function(cache) { return cache.add('/index-offline.html') })
-  )
-  */
+  // evt.waitUntil( caches.open('gih-cache').then(function(cache) { return cache.add('/index-offline.html') }) )
 });
 
 // https://developer.mozilla.org/en-US/docs/Web/API/ServiceWorkerGlobalScope/onactivate
@@ -425,7 +409,7 @@ self.addEventListener('message', evt => {
               console.log('[sw] clientInfos :', clientInfos);
 
               // popup 페이지의 client 만 존재할 경우, 모든 popup 페이지의 client 를 닫는다.
-              const clientInfoArr = fromObjToArr(clientInfos),
+              const clientInfoArr = Object.values(clientInfos),
                 indexClients = clientInfoArr.filter(obj => obj.isIndexPage === true),
                 popupClients = clientInfoArr.filter(obj => obj.isIndexPage === false),
                 hasOnlyPopupClients = indexClients.length <= 0 && popupClients.length > 0;
