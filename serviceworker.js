@@ -41,6 +41,17 @@ function broadcastMessageToAllClients(clients, action, value) {
   clients.forEach(client => client && client.postMessage({ action, value, from: SERVICE_WORKER_IDENTIFIER }));
 }
 
+function fromObjToArr(obj) {
+  let arr = [];
+
+  for (const key in obj) {
+    if (!obj.hasOwnProperty(key)) continue;
+    arr.push(obj[key]);
+  }
+
+  return arr;
+}
+
 //
 // + implementation
 //
@@ -218,29 +229,70 @@ self.addEventListener('message', evt => {
 
           console.log('[sw] clientInfos :', clientInfos);
 
+          // + 서비스워커 설치 프로세스 테스트 케이스
+          // 첫번째 client(0) 열린 후 서비스워커 설치 진행
+          // 0. 첫번째 client(0) 의 서비스워커 설치 실패 => 서비스워커 재설치를 위한 안내 UI 표기
+
+          // 0-1. 첫번째 client(0) 새로고침 없이, 새 client(1) 열기 => 소켓 비연결 상태의 client(1) 에 소켓 연결 시도
+          // 0-1-1. 소켓 비연결 상태의 client(1) 에 소켓 연결 성공 => 서비스워커의 client 관리 업데이트. 그러나, client(0) 은 서비스워커의 제어 범위 밖이므로 업데이트 불가. client(1) 은 업데이트 가능.
+          // 0-1-2. 소켓 비연결 상태의 client(1) 에 소켓 연결 실패 => 소켓 연결된 client 없음. 사용자를 위한 안내 및 소켓 재접속 UI 표기, 서비스워커의 client 관리 업데이트.
+          // 0-1-3. 소켓 비연결 상태의 client(1) 에 소켓 연결 도중 client(1) 닫기 => 소켓 비연결 상태의 client(0) 이 존재하지만 서비스워커의 제어 범위 밖이므로, 대응 불가.
+          // 0-1-4. 소켓 비연결 상태의 client(1) 에 소켓 연결 도중 client(1) 새로고침 => 소켓 비연결 상태의 client(0) 이 존재하지만 서비스워커의 제어 범위 밖이므로, 대응 불가. => 새로고침된 client(1) 에 소켓 연결 시도(0-1 플로우로 돌아감)
+
+          // 0-2. 첫번째 client(0) 새로고침
+          // 0-2-1. 소켓 비연결 상태의 client(0) 에 소켓 연결 성공 => 서비스워커의 client 관리 업데이트.
+          // 0-2-2. 소켓 비연결 상태의 client(0) 에 소켓 연결 실패 => 소켓 연결된 client 없음. 사용자를 위한 안내 및 소켓 재접속 UI 표기, 서비스워커의 client 관리 업데이트.
+          // 0-2-3. 소켓 비연결 상태의 client(0) 에 소켓 연결 도중 client(0) 닫기 => 앱 종료 및 모든 팝업의 종료
+          // 0-2-4. 소켓 비연결 상태의 client(0) 에 소켓 연결 도중 client(0) 새로고침 => 새로고침된 client(0) 에 소켓 연결 시도(0-1-2 플로우로 돌아감)
+
           // + 멀티 clients 소켓 연결 관리를 위한 테스트 케이스
-          // 첫번째 client(1) 열린 후에 소켓 연결 이후
+          // 첫번째 client(1) 열린 후 client(1) 에 소켓 연결된 이후
 
           // 1. 새 client(2) 열기
-          // 1-1. 소켓 연결 상태의 client(1) 가 존재하므로, client(2) 에 소켓 연결이 되지 않아야 한다.
-          // 1-2. 소켓 비연결 상태의 client(2) 닫기 => client(1) 의 소켓 연결 변화 없음. 서비스워커의 client 관리 업데이트
-          // 1-3. 소켓 비연결 상태의 client(2) 새로고침 => 새로고침한 client(2) id 의 변경 => 새로고침한 client(2) 에 소켓 연결이 되지 않아야 한다. 서비스워커의 client 관리 업데이트
+          // 1-1. 소켓 연결 상태의 client(1) 가 존재하므로, client(2) 에 소켓 연결이 되지 않음.
+          // 1-2. 소켓 비연결 상태의 client(2) 닫기 => client(1) 의 소켓 연결 변화 없음. 서비스워커의 client 관리 업데이트.
+          // 1-3. 소켓 비연결 상태의 client(2) 새로고침 => 새로고침한 client(2) id 의 변경 => client(1) 의 소켓 연결 변화 없음. 새로고침한 client(2) 에 소켓 연결이 되지 않음. 서비스워커의 client 관리 업데이트.
 
           // 2. 새 client(2) 열기
           // 2-1. 소켓 연결 상태의 client(1) 새로고침 => 소켓 비연결 상태의 client(2) 에 소켓 연결 시도 => client(1) 은 client id 변경되며 소켓 연결하지 않음. 서비스워커의 client 관리 업데이트.
+
+          // 2-1-1. 소켓 비연결 상태의 client(2) 에 소켓 연결 성공 => 서비스워커의 client 관리 업데이트.
+          // 2-1-2. 소켓 비연결 상태의 client(2) 에 소켓 연결 실패 => 소켓 연결된 client 없음. 사용자를 위한 안내 및 소켓 재접속 UI 표기, 서비스워커의 client 관리 업데이트
+          // 2-1-3. 소켓 비연결 상태의 client(2) 에 소켓 연결 도중 client(2) 닫기 => 소켓 비연결 상태의 client(1) 이 존재하므로, client(1) 에 소켓 연결 시도 // TODO: 실테스트 환경 구성 후, 테스트 필요.
+          // 2-1-4. 소켓 비연결 상태의 client(2) 에 소켓 연결 도중 client(2) 새로고침 => 새로고침한 client(2) 는 client id 변경. 소켓 비연결 상태의 client(1) 이 존재하므로, client(1) 에 소켓 연결 시도 // TODO: 실테스트 환경 구성 후, 테스트 필요.
+
+          // 2-2. 소켓 연결 상태의 client(1) 닫기 => 소켓 비연결 상태의 client(2) 에 소켓 연결 시도
           // 2-2-1. 소켓 비연결 상태의 client(2) 에 소켓 연결 성공 => 서비스워커의 client 관리 업데이트.
           // 2-2-2. 소켓 비연결 상태의 client(2) 에 소켓 연결 실패 => 소켓 연결된 client 없음. 사용자를 위한 안내 및 소켓 재접속 UI 표기, 서비스워커의 client 관리 업데이트
-          // 2-2-3. 소켓 비연결 상태의 client(2) 에 소켓 연결 도중 client(2) 닫기 => 소켓 비연결 상태의 client(1) 이 존재하므로, client(1) 에 소켓 연결 시도 // TODO: 실테스트 환경 구성 후, 테스트 필요.
-          // 2-2-4. 소켓 비연결 상태의 client(2) 에 소켓 연결 도중 client(2) 새로고침 => 새로고침한 client(2) 는 client id 변경. 소켓 비연결 상태의 client(1) 이 존재하므로, client(1) 에 소켓 연결 시도 // TODO: 실테스트 환경 구성 후, 테스트 필요.
-
-          // 2-3. 소켓 연결 상태의 client(1) 닫기 => 소켓 비연결 상태의 client(2) 에 소켓 연결 시도
-          // 2-3-1. 소켓 비연결 상태의 client(2) 에 소켓 연결 성공 => 서비스워커의 client 관리 업데이트.
-          // 2-3-2. 소켓 비연결 상태의 client(2) 에 소켓 연결 실패 => 소켓 연결된 client 없음. 사용자를 위한 안내 및 소켓 재접속 UI 표기, 서비스워커의 client 관리 업데이트
-          // 2-3-3. 소켓 비연결 상태의 client(2) 에 소켓 연결 도중 client(2) 닫기 => 앱 종료 및 모든 팝업의 종료 // TODO: 비즈니스 로직 구현 필요
-          // 2-3-3. 소켓 비연결 상태의 client(2) 에 소켓 연결 도중 client(2) 새로고침 => client(2) 는 client id 변경되며 소켓 연결 시도 // // TODO: 실테스트 환경 구성 후, 테스트 필요.
+          // 2-2-3. 소켓 비연결 상태의 client(2) 에 소켓 연결 도중 client(2) 닫기 => 앱 종료 및 모든 팝업의 종료
+          // 2-2-4. 소켓 비연결 상태의 client(2) 에 소켓 연결 도중 client(2) 새로고침 => client(2) 는 client id 변경되며 소켓 연결 시도 // // TODO: 실테스트 환경 구성 후, 테스트 필요.
 
           // 3. 소켓 연결 상태의 client 가 존재하나, 소켓 서버 측 등의 이슈로 소켓 연결 해제
           // 3-1. 소켓 연결된 client 없음. 사용자를 위한 안내 및 소켓 재접속 UI 표기, 서비스워커의 client 관리 업데이트
+
+          // + 팝업 client 테스트 케이스
+          // 첫번째 client(1) 열린 후 client(1) 에 소켓 연결된 이후
+
+          // 4. 새 팝업(9) 열기
+          // 4-1. 팝업(9) 이므로 소켓 연결 비허가. 서비스워커의 client 관리 업데이트. 팝업(9) 측에서도 서비스워커 측으로 메세지 전달 가능.
+          // 4-2. 소켓 연결 상태의 client(1) 닫기 => 앱 종료 및 모든 팝업의 종료
+          // 4-3. 소켓 연결 상태의 client(1) 새로고침 => 앱 새로고침 및 모든 팝업의 종료
+          // 4-4. 소켓 비연결 상태의 client(1) 닫기 => 앱 새로고침 및 모든 팝업의 종료
+          // 4-5. 소켓 비연결 상태의 client(1) 새로고침 => 앱 새로고침 및 모든 팝업의 종료
+
+          // 5. 새 멀티 팝업(9, 8) 열기
+          // 5-1. 팝업(8, 9) 이므로 소켓 연결 비허가. 서비스워커의 client 관리 업데이트. 팝업(8, 9) 측에서도 서비스워커 측으로 메세지 전달 가능.
+          // 5-2. 소켓 연결 상태의 client(1) 닫기 => 앱 종료 및 모든 팝업의 종료
+          // 5-3. 소켓 연결 상태의 client(1) 새로고침 => 앱 새로고침 및 모든 팝업의 종료
+          // 5-4. 소켓 비연결 상태의 client(1) 닫기 => 앱 새로고침 및 모든 팝업의 종료
+          // 5-5. 소켓 비연결 상태의 client(1) 새로고침 => 앱 새로고침 및 모든 팝업의 종료
+
+          // 6. 새 client(2) 열기 + 새 멀티 팝업 열기
+          // 6-1. 1, 2 플로우와 동일
+
+          // + 서비스워커 업데이트 테스트 케이스
+          // 7. 서비스워커 js 파일만 업데이트 이후 waiting 서비스워커의 활성화 를 위한 안내 UI 표기
+          // 7-1. UI 클릭 이벤트 등을 통해 서비스워커 활성화 (skipWaiting). 서비스워커의 client 관리 업데이트. // TODO: skipWaiting 을 통한 서비스워커 활성화 실패에 대한 레퍼런스는 찾아볼 수 없었다.
         }
       });
 
@@ -318,7 +370,6 @@ self.addEventListener('message', evt => {
       if (closedClientInfo) {
         if (closedClientInfo.isIndexPage === true) {
           // in index page
-
           if (closedClientInfo.isConnectingSocket === true || closedClientInfo.isConnectedSocket === true) {
             // 소켓 연결중 or 연결되어 있던 client 가 닫혔으므로, 소켓 연결할 새로운 client 를 찾는다.
             delete clientInfos[client.id];
@@ -354,16 +405,34 @@ self.addEventListener('message', evt => {
               console.log(
                 `[sw] 소켓 연결중 or 연결되어 있던 client close 후, 소켓 연결할 index page 의 client 가 존재하지 않음. index client 는 모두 닫히고 popup client 만 열려 있을 때도 발생할 수 있음.`
               );
+
+              getAllClients(_clients => {
+                syncClientInfos(getClientIds(_clients));
+                broadcastMessageToAllClients(_clients, 'UPDATE_CLIENT_INFOS', { clientInfos });
+
+                // 소켓 연결할 index 페이지의 client 가 존재하지 않음. 모든 popup 페이지의 client 를 닫는다.
+                broadcastMessageToAllClients(_clients, 'SHOULD_CLOSE_ALL_POPUPS', { clientInfos });
+              });
             }
           } else {
             // 소켓 연결중이 아닌 and 연결되어 있지 않았던 client 가 닫혔으므로, 닫힌 client 에 대한 정보 제거
             delete clientInfos[client.id];
 
-            console.log('[sw] clientInfos :', clientInfos);
-
             getAllClients(_clients => {
               syncClientInfos(getClientIds(_clients));
               broadcastMessageToAllClients(_clients, 'UPDATE_CLIENT_INFOS', { clientInfos });
+
+              console.log('[sw] clientInfos :', clientInfos);
+
+              // popup 페이지의 client 만 존재할 경우, 모든 popup 페이지의 client 를 닫는다.
+              const clientInfoArr = fromObjToArr(clientInfos),
+                indexClients = clientInfoArr.filter(obj => obj.isIndexPage === true),
+                popupClients = clientInfoArr.filter(obj => obj.isIndexPage === false),
+                hasOnlyPopupClients = indexClients.length <= 0 && popupClients.length > 0;
+              console.log('[sw] popup client 만 존재하므로, 모든 popup client 를 close 시킨다.');
+
+              if (hasOnlyPopupClients)
+                broadcastMessageToAllClients(_clients, 'SHOULD_CLOSE_ALL_POPUPS', { clientInfos });
             });
           }
         } else {

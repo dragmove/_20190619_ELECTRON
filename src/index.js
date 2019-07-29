@@ -100,6 +100,7 @@ if (isSupportServiceWorker) {
     })
     .catch(function(err) {
       console.log('[app] service worker registration 실패. error :', err);
+      window.alert('[app] service worker registration 실패. 서비스워커 재설치를 위한 안내 UI 표기 필요.');
     });
 
   navigator.serviceWorker.addEventListener('controllerchange', evt => {
@@ -155,6 +156,18 @@ if (isSupportServiceWorker) {
           '[app] 소켓 서버 => 소켓 연결된 클라이언트 => 서비스워커 => 모든 클라이언트로 전달된 SEND_FROM_SW_CLIENT_SERVER action을 받았다. :',
           data.value
         );
+        break;
+
+      case 'SHOULD_CLOSE_ALL_POPUPS':
+        clientInfos = data.value.clientInfos;
+
+        // close only popup clients
+        if (!isIndexPage) {
+          if (clientId in clientInfos) {
+            window.alert('[app] index client 가 모두 close 되었으므로, popup 페이지의 client 를 닫는다.');
+            window.close();
+          }
+        }
         break;
     }
   });
