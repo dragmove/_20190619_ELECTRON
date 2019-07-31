@@ -20,6 +20,7 @@
   "keywords": [],
   "author": "dragmove",
   "license": "MIT",
+  "main": "app.js",
   "config": {
     "forge": {
       "packagerConfig": {},

@@ -18,7 +18,9 @@ npm install
 npm run start:web // run and connect http://localhost:9001 Web App
 
 // Electron App
-npm run start // run Electron App
+npm run start:web // run http://localhost:9001 Web App
+npm run start // run Electron App and load http://localhost:9001/index.js
+
 npm run make // build Electron App to /out/make/squirrel.windows/x64/my-app-0.0.1 Setup.exe file. install this file on windows env.
 ```
 

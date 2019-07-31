@@ -14,10 +14,10 @@ wss.on('connection', ws => {
 
     const obj = JSON.parse(message);
     switch (obj.action) {
-      case 'REQUEST_SEND_SOCKET_MESSAGE':
+      case 'TEST_REQUEST_SEND_SOCKET_MESSAGE':
         // send message from socket server to client
         const data = JSON.stringify({
-          action: 'SEND_FROM_SOCKET_SERVER',
+          action: 'TEST_SEND_FROM_SOCKET_SERVER',
           value: {
             title: `This is a dummy message from socket server`,
             createdAt: new Date().getTime(),

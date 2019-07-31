@@ -4,6 +4,7 @@ import { isSupportServiceWorker, isSupportWebSocket } from './utils';
 // https://developers.google.com/web/fundamentals/primers/service-workers/lifecycle#%EC%88%98%EB%8F%99_%EC%97%85%EB%8D%B0%EC%9D%B4%ED%8A%B8
 
 const CLIENT_IDENTIFIER = 'serviceworker';
+const INTERVAL_CHECK_UPDATE_SERVICEWORKER = 15000;
 const isIndexPage = window.isIndex; // window.isIndex 라면 index.html 페이지
 
 let clientId = null;
@@ -35,7 +36,6 @@ if (isSupportServiceWorker) {
           `[app] window client는 현재 서비스워커에 의해 제어되고 있지 않다. 첫번째 서비스워커가 즉각 activate 될 것이다.`
         );
 
-        // TODO: ISSUE: updatefound event cannot reliable ?
         // https://developer.mozilla.org/ko/docs/Web/API/ServiceWorkerRegistration#Examples
         registration.addEventListener('updatefound', () => {
           console.log('[app] registration.onupdatefound event. 첫번째 서비스워커가 updating 중이다.');
@@ -55,7 +55,7 @@ if (isSupportServiceWorker) {
         });
 
         if (activeWorker && !installingWorker && !waitingWorker) {
-          // console.log('TODO: Check');
+          console.log('TODO: Check this case');
         }
 
         if (activeWorker && waitingWorker) {
@@ -90,13 +90,15 @@ if (isSupportServiceWorker) {
         } else {
           window.alert('[app] 이 브라우저는 웹 소켓을 지원하지 않는다.');
         }
+
+        // 새로운 서비스워커가 업데이트되었는지 주기적으로 확인한다.
+        // https://developers.google.com/web/fundamentals/primers/service-workers/lifecycle#%EC%88%98%EB%8F%99_%EC%97%85%EB%8D%B0%EC%9D%B4%ED%8A%B8
+        setIntervalToDetectNewServiceWorker();
       }
 
       showElement(openWindowBtn);
 
-      onNewServiceWorker(registration, () => {
-        setSkipWaitingBtn(registration);
-      });
+      onNewServiceWorker(registration, () => setSkipWaitingBtn(registration));
     })
     .catch(function(err) {
       console.log('[app] service worker registration 실패. error :', err);
@@ -151,9 +153,9 @@ if (isSupportServiceWorker) {
         hideElement(skipWaitingBtn);
         break;
 
-      case 'SEND_FROM_SW_CLIENT_SERVER':
+      case 'TEST_SEND_FROM_SW_CLIENT_SERVER':
         console.log(
-          '[app] 소켓 서버 => 소켓 연결된 클라이언트 => 서비스워커 => 모든 클라이언트로 전달된 SEND_FROM_SW_CLIENT_SERVER action을 받았다. :',
+          '[app] 소켓 서버 => 소켓 연결된 클라이언트 => 서비스워커 => 모든 클라이언트로 전달된 TEST_SEND_FROM_SW_CLIENT_SERVER action을 받았다. :',
           data.value
         );
         break;
@@ -189,14 +191,13 @@ function init() {
         window.alert('[app] 이 브라우저는 서비스워커를 지원하지 않는다.');
         throw new Error('[app] 이 브라우저는 서비스워커를 지원하지 않는다.');
       }
-
       if (!navigator.serviceWorker.controller) {
-        window.alert('[app] navigator.serviceWorker.controller가 정의되어 있지 않다.');
-        throw new Error('[app] navigator.serviceWorker.controller가 정의되어 있지 않다.');
+        window.alert('[app] navigator.serviceWorker.controller 미존재. postMessage 사용 불가.');
+        throw new Error('[app] navigator.serviceWorker.controller 미존재. postMessage 사용 불가');
       }
 
       navigator.serviceWorker.controller.postMessage({
-        action: 'PRINT_CLIENTS_NUM',
+        action: 'TEST_PRINT_CLIENTS_NUM',
         value: { isIndexPage },
         from: CLIENT_IDENTIFIER,
       });
@@ -235,7 +236,7 @@ function init() {
 
       ws.send(
         JSON.stringify({
-          action: 'REQUEST_SEND_SOCKET_MESSAGE',
+          action: 'TEST_REQUEST_SEND_SOCKET_MESSAGE',
           from: CLIENT_IDENTIFIER,
           createdAt: new Date().getTime(),
         })
@@ -251,6 +252,17 @@ function init() {
       from: CLIENT_IDENTIFIER,
     });
   };
+}
+
+function setIntervalToDetectNewServiceWorker() {
+  window.setInterval(() => {
+    navigator.serviceWorker.register('serviceworker.js').then(registration => {
+      onNewServiceWorker(registration, () => setSkipWaitingBtn(registration));
+
+      registration.update();
+      console.log('[app] 서비스워커의 수동 업데이트 시도');
+    });
+  }, INTERVAL_CHECK_UPDATE_SERVICEWORKER);
 }
 
 function onNewServiceWorker(registration, callback) {
@@ -383,9 +395,9 @@ function connectWebSocket() {
     console.log('[client-socket] dummy message from socket server :', data);
 
     switch (data.action) {
-      case 'SEND_FROM_SOCKET_SERVER':
+      case 'TEST_SEND_FROM_SOCKET_SERVER':
         navigator.serviceWorker.controller.postMessage({
-          action: 'SEND_FROM_SOCKET_CLIENT_SERVER',
+          action: 'TEST_SEND_FROM_SOCKET_CLIENT_SERVER',
           value: data.value,
           from: CLIENT_IDENTIFIER,
         });

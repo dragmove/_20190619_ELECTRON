@@ -360,7 +360,7 @@ self.addEventListener('message', evt => {
 
             const clientInfo = findByCondition(clientInfos, obj => obj && obj.isIndexPage === true);
             if (clientInfo) {
-              console.log('[sw] 소켓 연결 중인 페이지가 close 되어, 이후 소켓 연결할 client info :', clientInfo);
+              console.log('[sw] 소켓 연결중 페이지 close 이후, 새로 소켓 연결할 client info :', clientInfo);
 
               self.clients
                 .get(clientInfo.id)
@@ -369,12 +369,12 @@ self.addEventListener('message', evt => {
                   clientInfo.isConnectedSocket = false;
                   console.log('[sw] resolved. clientInfos :', clientInfos);
 
-                  postMessageToClient(client, 'SHOULD_CONNECT_SOCKET', { id: clientInfo.id, clientInfos });
-
                   getAllClients(_clients => {
                     syncClientInfos(getClientIds(_clients));
                     broadcastMessageToAllClients(_clients, 'UPDATE_CLIENT_INFOS', { clientInfos });
                   });
+
+                  postMessageToClient(client, 'SHOULD_CONNECT_SOCKET', { id: clientInfo.id, clientInfos });
                 })
                 .catch(error => {
                   clientInfo.isConnectingSocket = false;
@@ -423,7 +423,6 @@ self.addEventListener('message', evt => {
           console.log('[sw] popup closed');
 
           delete clientInfos[client.id];
-
           console.log('[sw] clientInfos :', clientInfos);
 
           getAllClients(_clients => {
@@ -453,19 +452,21 @@ self.addEventListener('message', evt => {
       console.groupEnd();
       break;
 
-    case 'PRINT_CLIENTS_NUM':
-      console.group('+ [sw] ✉️ PRINT_CLIENTS_NUM');
+    // postMessage 테스트
+    case 'TEST_PRINT_CLIENTS_NUM':
+      console.group('+ [sw] ✉️ TEST_PRINT_CLIENTS_NUM');
       getAllClients(_clients => {
         console.log('[sw] clients :', _clients);
       });
       console.groupEnd();
       break;
 
-    case 'SEND_FROM_SOCKET_CLIENT_SERVER':
-      console.log('+ [sw] ✉️ SEND_FROM_SOCKET_CLIENT_SERVER');
+    // 소켓 서버 연동 테스트
+    case 'TEST_SEND_FROM_SOCKET_CLIENT_SERVER':
+      console.log('+ [sw] ✉️ TEST_SEND_FROM_SOCKET_CLIENT_SERVER');
 
       getAllClients(_clients => {
-        broadcastMessageToAllClients(_clients, 'SEND_FROM_SW_CLIENT_SERVER', {
+        broadcastMessageToAllClients(_clients, 'TEST_SEND_FROM_SW_CLIENT_SERVER', {
           value: data.value,
         });
       });
