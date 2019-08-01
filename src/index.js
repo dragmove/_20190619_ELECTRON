@@ -406,6 +406,7 @@ function connectWebSocket() {
   };
 
   /*
+  // TODO: Add flush messages throttling process
   // 1초 내에 10개 이상 들어오면, 메세지를 쌓는다. 남아 있는 메세지가 없을 때까지 10개씩 묶어서 1초마다 방출한다.
   // 1초 내에 10개 미만이면, 모두 방출한다.
   const INTERVAL_FLUSH_MESSAGES = 1000;
