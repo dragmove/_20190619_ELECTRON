@@ -56,12 +56,8 @@
   },
   "dependencies": {
     "electron-squirrel-startup": "^1.0.0",
-<<<<<<< HEAD
     "nodemon": "^1.19.1",
     "ws": "^7.0.1"
-=======
-    "ws": "^7.0.1",
->>>>>>> e526b252e57a68cd50ceaa93347923d1bfd94db1
   },
   "devDependencies": {
     "@babel/cli": "^7.4.4",
