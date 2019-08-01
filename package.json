@@ -56,8 +56,12 @@
   },
   "dependencies": {
     "electron-squirrel-startup": "^1.0.0",
+<<<<<<< HEAD
     "nodemon": "^1.19.1",
     "ws": "^7.0.1"
+=======
+    "ws": "^7.0.1",
+>>>>>>> e526b252e57a68cd50ceaa93347923d1bfd94db1
   },
   "devDependencies": {
     "@babel/cli": "^7.4.4",
@@ -74,7 +78,6 @@
     "electron": "5.0.4",
     "eslint": "^5.16.0",
     "eslint-loader": "^2.1.2",
-    "lodash": "^4.17.11",
     "terser-webpack-plugin": "^1.3.0",
     "webpack": "^4.28.4",
     "webpack-cli": "^3.1.0",
